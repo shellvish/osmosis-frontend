@@ -300,4 +300,34 @@ export class WeightedPool implements Pool {
       .mul(new Dec("0.3"))
       .truncate();
   }
+
+  getDerivativeSpotPriceAfterSwapTokenIn(
+    tokenIn: { denom: string; amount: Int },
+    tokenOutDenom: string
+  ): Dec {
+    const inPoolAsset = this.getPoolAsset(tokenIn.denom);
+    const outPoolAsset = this.getPoolAsset(tokenOutDenom);
+
+    return inPoolAsset.weight
+      .add(outPoolAsset.weight)
+      .toDec()
+      .quo(
+        outPoolAsset.amount
+          .toDec()
+          .mul(
+            WeightedPoolMath.pow(
+              inPoolAsset.amount
+                .toDec()
+                .quo(
+                  tokenIn.amount
+                    .toDec()
+                    .add(inPoolAsset.amount.toDec())
+                    .sub(inPoolAsset.amount.toDec().mul(this.swapFee))
+                ),
+              inPoolAsset.weight.toDec().quo(outPoolAsset.weight.toDec())
+            )
+          )
+          .mul(inPoolAsset.weight.toDec())
+      );
+  }
 }

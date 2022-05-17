@@ -19,7 +19,12 @@ const Home: NextPage = observer(function () {
   const queries = queriesStore.get(chainInfo.chainId);
   const queryPools = queries.osmosis.queryGammPools;
 
-  const pools = queryPools.getAllPools().map((pool) => pool.pool);
+  const pools = queryPools
+    .getAllPools()
+    .filter((pool) => {
+      return parseInt(pool.id) <= 10;
+    })
+    .map((pool) => pool.pool);
 
   const imageRatio = 1300 / 900;
 

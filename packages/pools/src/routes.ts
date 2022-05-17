@@ -37,7 +37,128 @@ export class OptimizedRoutes {
     this.candidatePathsCache = new Map();
   }
 
-  protected getCandidatePaths(
+  /**
+   * Returns best route to get the greatest token out.
+   * NOTE: SwapFee is considered.
+   * @param tokenIn
+   * @param tokenOutDenom
+   * @param permitIntermediate Calculate until level 1 multihop if true.
+   */
+  getBestRouteByTokenIn(
+    tokenIn: {
+      denom: string;
+      amount: Int;
+    },
+    tokenOutDenom: string,
+    permitIntermediate: boolean
+  ): RoutePath {
+    if (this.pools.length === 0) {
+      throw new NoPoolsError();
+    }
+
+    if (!tokenIn.amount.isPositive()) {
+      throw new Error("Token in amount can't be zero or negative");
+    }
+
+    const sortedRoutes = this.getRoutesSortedByTokenIn(
+      tokenIn,
+      tokenOutDenom,
+      permitIntermediate
+    );
+
+    if (sortedRoutes.length === 0) {
+      throw new Error("Can't find any best route unexpectedly");
+    }
+
+    return sortedRoutes[0];
+  }
+
+  /**
+   * Returns routes sorted by the expected token out amount by descending order.
+   * If the route which doesn't have enough assets (if first pool's limit amount is lesser than token in),
+   * that route would be filtered.
+   * NOTE: SwapFee is considered.
+   * @param tokenIn
+   * @param tokenOutDenom
+   * @param permitIntermediate Calculate until level 1 multihop if true.
+   */
+  getRoutesSortedByTokenIn(
+    tokenIn: {
+      denom: string;
+      amount: Int;
+    },
+    tokenOutDenom: string,
+    permitIntermediate: boolean
+  ): RoutePath[] {
+    if (this.pools.length === 0) {
+      throw new NoPoolsError();
+    }
+
+    if (!tokenIn.amount.isPositive()) {
+      throw new Error("Token in amount can't be zero or negative");
+    }
+
+    const candidates = this.getCandidateRoutes(
+      tokenIn.denom,
+      tokenOutDenom,
+      permitIntermediate
+    );
+
+    return candidates
+      .filter((pool) => {
+        if (pool.pools.length === 0) {
+          return false;
+        }
+
+        if (
+          pool.pools[0]
+            .getLimitAmountByTokenIn(tokenIn.denom)
+            .lt(tokenIn.amount)
+        ) {
+          return false;
+        }
+
+        try {
+          // The error can be thrown if pool's asset or token in amount is too low or due to other unknown reasons...
+          // If we don't handle thrown error, the remaining calculations for other pools also aren't processed.
+          // For convenience, just filter such case if error thrown.
+          this.calculateTokenOutByTokenIn([
+            {
+              amount: tokenIn.amount,
+              ...pool,
+            },
+          ]);
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .sort((pool1, pool2) => {
+        const tokenOut1 = this.calculateTokenOutByTokenIn([
+          {
+            amount: tokenIn.amount,
+            ...pool1,
+          },
+        ]);
+        const tokenOut2 = this.calculateTokenOutByTokenIn([
+          {
+            amount: tokenIn.amount,
+            ...pool2,
+          },
+        ]);
+
+        return tokenOut1.amount.gt(tokenOut2.amount) ? -1 : 1;
+      });
+  }
+
+  /**
+   * Returns the routes which includes token in and token out.
+   * @param tokenInDenom
+   * @param tokenOutDenom
+   * @param permitIntermediate Calculate until level 1 multihop if true
+   * @protected
+   */
+  getCandidateRoutes(
     tokenInDenom: string,
     tokenOutDenom: string,
     permitIntermediate: boolean
@@ -52,7 +173,7 @@ export class OptimizedRoutes {
       return cached;
     }
 
-    let filteredRoutePaths: RoutePath[] = [];
+    const filteredRoutePaths: RoutePath[] = [];
 
     // Key is denom.
     const multihopCandiateHasOnlyInIntermediates: Map<string, Pool[]> =
@@ -106,107 +227,6 @@ export class OptimizedRoutes {
       }
     }
 
-    // This method is actually used to calculate an optimized routes.
-    // In the case of overlapping pools in the optimized route,
-    // it is difficult because the change of the pool by each swap should be calculated in advance...
-    // So, make sure that the pools do not overlap.
-    // Key is pool id
-    const usedFirstPoolMap: Map<string, boolean> = new Map();
-    // Key is pool id
-    const usedSecondPoolMap: Map<string, boolean> = new Map();
-
-    multihopCandiateHasOnlyInIntermediates.forEach(
-      (hasOnlyInPools, intermediateDenom) => {
-        const hasOnlyOutIntermediates =
-          multihopCandiateHasOnlyOutIntermediates.get(intermediateDenom);
-        if (hasOnlyOutIntermediates) {
-          let highestNormalizedLiquidityFirst = new Dec(0);
-          let highestNormalizedLiquidityFirstPool: Pool | undefined;
-
-          for (const pool of hasOnlyInPools) {
-            if (!usedFirstPoolMap.get(pool.id)) {
-              const normalizedLiquidity = pool.getNormalizedLiquidity(
-                tokenInDenom,
-                intermediateDenom
-              );
-
-              if (normalizedLiquidity.gte(highestNormalizedLiquidityFirst)) {
-                highestNormalizedLiquidityFirst = normalizedLiquidity;
-                highestNormalizedLiquidityFirstPool = pool;
-              }
-            }
-          }
-
-          if (
-            highestNormalizedLiquidityFirst.isPositive() &&
-            highestNormalizedLiquidityFirstPool
-          ) {
-            let highestNormalizedLiquiditySecond = new Dec(0);
-            let highestNormalizedLiquiditySecondPool: Pool | undefined;
-
-            for (const pool of hasOnlyOutIntermediates) {
-              if (!usedSecondPoolMap.get(pool.id)) {
-                const normalizedLiquidity = pool.getNormalizedLiquidity(
-                  intermediateDenom,
-                  tokenOutDenom
-                );
-
-                if (normalizedLiquidity.gte(highestNormalizedLiquiditySecond)) {
-                  highestNormalizedLiquiditySecond = normalizedLiquidity;
-                  highestNormalizedLiquiditySecondPool = pool;
-                }
-              }
-            }
-
-            if (
-              highestNormalizedLiquiditySecond.isPositive() &&
-              highestNormalizedLiquiditySecondPool
-            ) {
-              usedFirstPoolMap.set(
-                highestNormalizedLiquidityFirstPool.id,
-                true
-              );
-              usedSecondPoolMap.set(
-                highestNormalizedLiquiditySecondPool.id,
-                true
-              );
-              filteredRoutePaths.push({
-                pools: [
-                  highestNormalizedLiquidityFirstPool,
-                  highestNormalizedLiquiditySecondPool,
-                ],
-                tokenOutDenoms: [intermediateDenom, tokenOutDenom],
-                tokenInDenom,
-              });
-            }
-          }
-        }
-      }
-    );
-
-    filteredRoutePaths = filteredRoutePaths.sort((path1, path2) => {
-      // Priority is given to direct swap.
-      // For direct swap, sort by normalized liquidity.
-      // In case of multihop swap, sort by first normalized liquidity.
-
-      const path1IsDirect = path1.pools.length === 1;
-      const path2IsDirect = path2.pools.length === 1;
-      if (!path1IsDirect || !path2IsDirect) {
-        return path1IsDirect ? -1 : 1;
-      }
-
-      const path1NormalizedLiquidity = path1.pools[0].getNormalizedLiquidity(
-        tokenInDenom,
-        path1.tokenOutDenoms[0]
-      );
-      const path2NormalizedLiquidity = path2.pools[0].getNormalizedLiquidity(
-        tokenInDenom,
-        path2.tokenOutDenoms[0]
-      );
-
-      return path1NormalizedLiquidity.gte(path2NormalizedLiquidity) ? -1 : 1;
-    });
-
     this.candidatePathsCache.set(cacheKey, filteredRoutePaths);
 
     return filteredRoutePaths;
@@ -218,23 +238,27 @@ export class OptimizedRoutes {
       amount: Int;
     },
     tokenOutDenom: string,
-    maxPools: number
+    maxRoutes: number,
+    iterations: number
   ): RoutePathWithAmount[] {
     if (!tokenIn.amount.isPositive()) {
-      throw new Error("Token in amount is zero or negative");
+      throw new Error("Token in amount can't be zero or negative");
     }
 
-    let paths = this.getCandidatePaths(tokenIn.denom, tokenOutDenom, true);
-    if (paths.length === 0) {
-      throw new NoPoolsError();
-    }
+    // Sort routes by expected token out.
+    let sortedRoutes = this.getRoutesSortedByTokenIn(
+      tokenIn,
+      tokenOutDenom,
+      true
+    );
 
-    paths = paths.slice(0, maxPools);
+    // Do not need more routes than max routes.
+    sortedRoutes = sortedRoutes.slice(0, maxRoutes);
 
     const initialSwapAmounts: Int[] = [];
     let totalLimitAmount = new Int(0);
-    for (const path of paths) {
-      const limitAmount = path.pools[0].getLimitAmountByTokenIn(tokenIn.denom);
+    for (const route of sortedRoutes) {
+      const limitAmount = route.pools[0].getLimitAmountByTokenIn(tokenIn.denom);
 
       totalLimitAmount = totalLimitAmount.add(limitAmount);
 
@@ -258,14 +282,265 @@ export class OptimizedRoutes {
       throw new NotEnoughLiquidityError();
     }
 
-    // TODO: ...
-
-    return initialSwapAmounts.map((amount, i) => {
+    let bestRoutes = initialSwapAmounts.map((amount, i) => {
       return {
-        ...paths[i],
+        ...sortedRoutes[i],
         amount,
       };
     });
+    let bestTokenOut: Int = this.calculateTokenOutByTokenIn(bestRoutes).amount;
+
+    const candidateRoutes = this.approximateOptimizedRoutesByTokenIn(
+      bestRoutes,
+      iterations
+    );
+    const candidateTokenOut =
+      this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+    if (candidateTokenOut.gt(bestTokenOut)) {
+      bestRoutes = candidateRoutes;
+      bestTokenOut = candidateTokenOut;
+    } else {
+      return bestRoutes;
+    }
+
+    const initialNumBestRoutes = initialSwapAmounts.length;
+
+    for (let i = initialNumBestRoutes - 1; i < sortedRoutes.length; i++) {
+      const scaleFactor = new Dec(bestRoutes.length).quo(
+        new Dec(bestRoutes.length + 1)
+      );
+      const candidateRoute = sortedRoutes[i];
+      let candidateRoutes = bestRoutes.map((route) => {
+        return {
+          ...route,
+          amount: route.amount.toDec().mul(scaleFactor).truncate(),
+        };
+      });
+      let tempSumCandidateRouteAmounts = new Int(0);
+      for (const route of candidateRoutes) {
+        tempSumCandidateRouteAmounts = tempSumCandidateRouteAmounts.add(
+          route.amount
+        );
+      }
+      candidateRoutes.push({
+        ...candidateRoute,
+        amount: tokenIn.amount.sub(tempSumCandidateRouteAmounts),
+      });
+
+      let candidateTokenOut =
+        this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+
+      if (candidateTokenOut.gt(bestTokenOut)) {
+        bestRoutes = candidateRoutes;
+        bestTokenOut = candidateTokenOut;
+      } else {
+        return bestRoutes;
+      }
+
+      candidateRoutes = this.approximateOptimizedRoutesByTokenIn(
+        candidateRoutes,
+        iterations
+      );
+      candidateTokenOut =
+        this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+
+      if (candidateTokenOut.gt(bestTokenOut)) {
+        bestRoutes = candidateRoutes;
+        bestTokenOut = candidateTokenOut;
+      } else {
+        return bestRoutes;
+      }
+    }
+
+    return bestRoutes;
+  }
+
+  approximateOptimizedRoutesByTokenIn(
+    routes: RoutePathWithAmount[],
+    iterations: number
+  ): RoutePathWithAmount[] {
+    // It's ideal that the swap result converges to the spot price
+    // Impossible to get the exact spot price to converge, thus iterate and return routes cloesest to spotprice
+
+    if (routes.length === 0) {
+      return [];
+    }
+
+    if (routes.length === 1) {
+      // No need to calculate if route is just one.
+      return routes.slice();
+    }
+
+    let totalTokenInAmount = new Int(0);
+    for (const route of routes) {
+      totalTokenInAmount = totalTokenInAmount.add(route.amount);
+    }
+
+    let tokenInAmounts = routes.map((route) => route.amount);
+
+    for (let i = 0; i < iterations; i++) {
+      const spotPricesAfterSwap: Dec[] = [];
+      const derivativeSPaSs: Dec[] = [];
+      let sumInverseDerivativeSPaSs = new Dec(0);
+      let sumSPaSDividedByDerivativeSPaSs = new Dec(0);
+
+      for (const route of routes) {
+        const spotPriceAfterSwap = this.calculateTokenOutByTokenIn([
+          route,
+        ]).afterSpotPriceInOverOut;
+        const derivativeSPaS =
+          this.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(route);
+
+        spotPricesAfterSwap.push(spotPriceAfterSwap);
+        derivativeSPaSs.push(derivativeSPaS);
+
+        sumInverseDerivativeSPaSs = sumInverseDerivativeSPaSs.add(
+          new Dec(1).quo(derivativeSPaS)
+        );
+        sumSPaSDividedByDerivativeSPaSs = sumSPaSDividedByDerivativeSPaSs.add(
+          spotPriceAfterSwap.quo(derivativeSPaS)
+        );
+      }
+
+      const targetSpotPriceInOverOut = sumSPaSDividedByDerivativeSPaSs.quo(
+        sumInverseDerivativeSPaSs
+      );
+
+      const newTokenInAmounts: Int[] = tokenInAmounts.slice();
+      let breakIteration = false;
+
+      for (let i = 0; i < routes.length; i++) {
+        const route = routes[i];
+
+        const newTokenInAmount: Int = (() => {
+          if (i === routes.length - 1) {
+            // The last one would be subtraction of total amount and sum of prior amounts.
+            // If this is done by actually calculating, the total amount could be  something like 999999uosmo
+            // This could cause confusion to the users in the UI
+            // thus this is done to set the exact token it amount set by the user
+            let sub = new Int(0);
+
+            for (let j = 0; j < i; j++) {
+              sub = sub.add(newTokenInAmounts[j]);
+            }
+
+            return totalTokenInAmount.sub(sub);
+          }
+
+          return tokenInAmounts[i].add(
+            targetSpotPriceInOverOut
+              .sub(spotPricesAfterSwap[i])
+              .quo(derivativeSPaSs[i])
+              .truncate()
+          );
+        })();
+
+        if (newTokenInAmount.lte(new Int(0))) {
+          breakIteration = true;
+          break;
+        }
+
+        if (
+          route.pools[0]
+            .getLimitAmountByTokenIn(route.tokenInDenom)
+            .lte(newTokenInAmount)
+        ) {
+          breakIteration = true;
+          break;
+        }
+
+        newTokenInAmounts[i] = newTokenInAmount;
+      }
+
+      if (breakIteration) {
+        break;
+      }
+      tokenInAmounts = newTokenInAmounts;
+    }
+
+    return routes.map((route, i) => {
+      return {
+        ...route,
+        amount: tokenInAmounts[i],
+      };
+    });
+  }
+
+  protected calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+    route: RoutePathWithAmount
+  ): Dec {
+    // Method name too long… but meaningful
+
+    if (route.pools.length === 0) {
+      throw new Error("Can't calculate derivative because no pool provided");
+    }
+
+    if (route.pools.length === 1) {
+      return route.pools[0].getDerivativeSpotPriceAfterSwapTokenIn(
+        {
+          denom: route.tokenInDenom,
+          amount: route.amount,
+        },
+        route.tokenOutDenoms[0]
+      );
+    }
+
+    // Formula of SpotPriceAfterSwap(TokenIn) is below
+    // SPaS(x) = SPaS1(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x))) ...
+    // We need the derivative of that
+    // (Use product rule and chain rule)
+    // SPaS'(x) = SPaS1'(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS2'(TokenOut1(x)) * SPaS1(x) * TokenOut1'(x) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS3'(TokenOut2(TokenOut1(x))) * SPaS1(x) * TokenOut1'(x) * SPaS2(TokenOut1(x)) * TokenOut2'(TokenOut1(x)) ...
+    // And, we can know "limit(h->0) (TokenOut(x+h)-TokenOut(x))/h = 1/SPaS(x)" intuitively. (TODO: Prove?)
+    // Thus, below expression can be derived.
+    // SPaS'(x) = SPaS1'(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS2'(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS3'(TokenOut2(TokenOut1(x))) ...
+    const spotPrices: Dec[] = [];
+    const tokenIns: {
+      denom: string;
+      amount: Int;
+    }[] = [
+      {
+        denom: route.tokenInDenom,
+        amount: route.amount,
+      },
+    ];
+    for (let i = 0; i < route.pools.length; i++) {
+      const pool = route.pools[i];
+      const tokenOutDenom = route.tokenOutDenoms[i];
+      const tokenOut = pool.getTokenOutByTokenIn(tokenIns[i], tokenOutDenom);
+      tokenIns.push({
+        denom: tokenOutDenom,
+        amount: tokenOut.amount,
+      });
+      spotPrices.push(tokenOut.afterSpotPriceInOverOut);
+    }
+
+    let dec = new Dec(0);
+    for (let i = 0; i < route.pools.length; i++) {
+      const pool = route.pools[i];
+
+      const derivativeSPaS = pool.getDerivativeSpotPriceAfterSwapTokenIn(
+        tokenIns[i],
+        route.tokenOutDenoms[i]
+      );
+
+      const spotPriceProduct = (() => {
+        let dec = new Dec(1);
+
+        for (let j = i + 1; j < spotPrices.length; j++) {
+          dec = dec.mul(spotPrices[j]);
+        }
+
+        return dec;
+      })();
+
+      dec = dec.add(derivativeSPaS.mul(spotPriceProduct));
+    }
+
+    return dec;
   }
 
   calculateTokenOutByTokenIn(paths: RoutePathWithAmount[]): {
