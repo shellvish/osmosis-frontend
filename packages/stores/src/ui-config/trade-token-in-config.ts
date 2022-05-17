@@ -2,7 +2,6 @@ import {
   AmountConfig,
   IFeeConfig,
   InsufficientAmountError,
-  InvalidNumberAmountError,
 } from "@keplr-wallet/hooks";
 import { action, computed, makeObservable, observable, override } from "mobx";
 import { AppCurrency } from "@keplr-wallet/types";
