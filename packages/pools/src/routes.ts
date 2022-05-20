@@ -60,7 +60,7 @@ export class OptimizedRoutes {
       throw new Error("Token in amount can't be zero or negative");
     }
 
-    const sortedRoutes = this.getRoutesSortedByTokenIn(
+    const sortedRoutes = this.getRoutesSortedByExpectedTokenOut(
       tokenIn,
       tokenOutDenom,
       permitIntermediate
@@ -82,7 +82,7 @@ export class OptimizedRoutes {
    * @param tokenOutDenom
    * @param permitIntermediate Calculate until level 1 multihop if true.
    */
-  getRoutesSortedByTokenIn(
+  getRoutesSortedByExpectedTokenOut(
     tokenIn: {
       denom: string;
       amount: Int;
@@ -246,7 +246,7 @@ export class OptimizedRoutes {
     }
 
     // Sort routes by expected token out.
-    let sortedRoutes = this.getRoutesSortedByTokenIn(
+    let sortedRoutes = this.getRoutesSortedByExpectedTokenOut(
       tokenIn,
       tokenOutDenom,
       true
