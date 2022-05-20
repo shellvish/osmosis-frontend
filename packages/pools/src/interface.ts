@@ -1,5 +1,11 @@
 import { Dec, Int } from "@keplr-wallet/unit";
 
+/**
+ * Pool is the interface to generalize multiple type of pools.
+ * Implementations of this interface must be immutable.
+ * Many logics using this interface assume that the implementation of this interface is immutable,
+ * so if the implementation is not immutable, the problems occur.
+ */
 export interface Pool {
   get id(): string;
 
