@@ -67,7 +67,6 @@ export interface Pool {
     slippage: Dec;
   };
 
-  getNormalizedLiquidity(tokenInDenom: string, tokenOutDenom: string): Dec;
   getLimitAmountByTokenIn(denom: string): Int;
   getDerivativeSpotPriceAfterSwapTokenIn(
     tokenIn: {
