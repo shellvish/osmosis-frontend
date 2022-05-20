@@ -2,7 +2,7 @@ import { Dec, Int } from "@keplr-wallet/unit";
 import { Pool } from "./interface";
 import { NoPoolsError, NotEnoughLiquidityError } from "./errors";
 
-export interface RoutePath {
+export interface Route {
   pools: Pool[];
   // tokenOutDenoms means the token to come out from each pool.
   // This should the same length with the pools.
@@ -12,13 +12,13 @@ export interface RoutePath {
   tokenInDenom: string;
 }
 
-export interface RoutePathWithAmount extends RoutePath {
+export interface RouteWithAmount extends Route {
   amount: Int;
 }
 
 export class OptimizedRoutes {
   protected _pools: ReadonlyArray<Pool>;
-  protected candidatePathsCache = new Map<string, RoutePath[]>();
+  protected candidatePathsCache = new Map<string, Route[]>();
 
   constructor(pools: ReadonlyArray<Pool>) {
     this._pools = pools;
@@ -51,7 +51,7 @@ export class OptimizedRoutes {
     },
     tokenOutDenom: string,
     permitIntermediate: boolean
-  ): RoutePath {
+  ): Route {
     if (this.pools.length === 0) {
       throw new NoPoolsError();
     }
@@ -89,7 +89,7 @@ export class OptimizedRoutes {
     },
     tokenOutDenom: string,
     permitIntermediate: boolean
-  ): RoutePath[] {
+  ): Route[] {
     if (this.pools.length === 0) {
       throw new NoPoolsError();
     }
@@ -162,7 +162,7 @@ export class OptimizedRoutes {
     tokenInDenom: string,
     tokenOutDenom: string,
     permitIntermediate: boolean
-  ): RoutePath[] {
+  ): Route[] {
     if (this.pools.length === 0) {
       return [];
     }
@@ -173,7 +173,7 @@ export class OptimizedRoutes {
       return cached;
     }
 
-    const filteredRoutePaths: RoutePath[] = [];
+    const filteredRoutePaths: Route[] = [];
 
     // Key is denom.
     const multihopCandiateHasOnlyInIntermediates: Map<string, Pool[]> =
@@ -240,7 +240,7 @@ export class OptimizedRoutes {
     tokenOutDenom: string,
     maxRoutes: number,
     iterations: number
-  ): RoutePathWithAmount[] {
+  ): RouteWithAmount[] {
     if (!tokenIn.amount.isPositive()) {
       throw new Error("Token in amount can't be zero or negative");
     }
@@ -356,9 +356,9 @@ export class OptimizedRoutes {
   }
 
   approximateOptimizedRoutesByTokenIn(
-    routes: RoutePathWithAmount[],
+    routes: RouteWithAmount[],
     iterations: number
-  ): RoutePathWithAmount[] {
+  ): RouteWithAmount[] {
     // It's ideal that the swap result converges to the spot price
     // Impossible to get the exact spot price to converge, thus iterate and return routes cloesest to spotprice
 
@@ -467,7 +467,7 @@ export class OptimizedRoutes {
   }
 
   protected calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
-    route: RoutePathWithAmount
+    route: RouteWithAmount
   ): Dec {
     // Method name too long… but meaningful
 
@@ -543,7 +543,7 @@ export class OptimizedRoutes {
     return dec;
   }
 
-  calculateTokenOutByTokenIn(paths: RoutePathWithAmount[]): {
+  calculateTokenOutByTokenIn(paths: RouteWithAmount[]): {
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
