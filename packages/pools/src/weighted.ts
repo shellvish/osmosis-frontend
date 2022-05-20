@@ -76,10 +76,6 @@ export class WeightedPool implements Pool {
     });
   }
 
-  get poolAssetDenoms(): string[] {
-    return this.raw.poolAssets.map((asset) => asset.token.denom);
-  }
-
   get shareDenom(): string {
     return this.raw.totalShares.denom;
   }
