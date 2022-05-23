@@ -107,8 +107,8 @@ export class OptimizedRoutes {
       permitIntermediate
     );
 
-    return this.unwrapCachedPoolRoutes(
-      this.wrapCachedPoolRoutes(candidates)
+    return OptimizedRoutes.unwrapCachedPoolRoutes(
+      OptimizedRoutes.wrapCachedPoolRoutes(candidates)
         .filter((pool) => {
           if (pool.pools.length === 0) {
             return false;
@@ -126,7 +126,7 @@ export class OptimizedRoutes {
             // The error can be thrown if pool's asset or token in amount is too low or due to other unknown reasons...
             // If we don't handle thrown error, the remaining calculations for other pools also aren't processed.
             // For convenience, just filter such case if error thrown.
-            this.calculateTokenOutByTokenIn([
+            OptimizedRoutes.calculateTokenOutByTokenIn([
               {
                 amount: tokenIn.amount,
                 ...pool,
@@ -138,13 +138,13 @@ export class OptimizedRoutes {
           }
         })
         .sort((pool1, pool2) => {
-          const tokenOut1 = this.calculateTokenOutByTokenIn([
+          const tokenOut1 = OptimizedRoutes.calculateTokenOutByTokenIn([
             {
               amount: tokenIn.amount,
               ...pool1,
             },
           ]);
-          const tokenOut2 = this.calculateTokenOutByTokenIn([
+          const tokenOut2 = OptimizedRoutes.calculateTokenOutByTokenIn([
             {
               amount: tokenIn.amount,
               ...pool2,
@@ -186,7 +186,7 @@ export class OptimizedRoutes {
     const multihopCandiateHasOnlyOutIntermediates: Map<string, Pool[]> =
       new Map();
 
-    const cachedPools = this.wrapCachedPools(this.pools);
+    const cachedPools = OptimizedRoutes.wrapCachedPools(this.pools);
     for (const pool of cachedPools) {
       const hasTokenIn = pool.hasPoolAsset(tokenInDenom);
       const hasTokenOut = pool.hasPoolAsset(tokenOutDenom);
@@ -235,7 +235,7 @@ export class OptimizedRoutes {
 
     this.candidatePathsCache.set(cacheKey, filteredRoutePaths);
 
-    return this.unwrapCachedPoolRoutes(filteredRoutePaths);
+    return OptimizedRoutes.unwrapCachedPoolRoutes(filteredRoutePaths);
   }
 
   getOptimizedRoutesByTokenIn(
@@ -252,7 +252,7 @@ export class OptimizedRoutes {
     }
 
     // Sort routes by expected token out.
-    let sortedRoutes = this.wrapCachedPoolRoutes(
+    let sortedRoutes = OptimizedRoutes.wrapCachedPoolRoutes(
       this.getRoutesSortedByExpectedTokenOut(tokenIn, tokenOutDenom, true)
     );
 
@@ -292,14 +292,15 @@ export class OptimizedRoutes {
         amount,
       };
     });
-    let bestTokenOut: Int = this.calculateTokenOutByTokenIn(bestRoutes).amount;
+    let bestTokenOut: Int =
+      OptimizedRoutes.calculateTokenOutByTokenIn(bestRoutes).amount;
 
-    const candidateRoutes = this.approximateOptimizedRoutesByTokenIn(
+    const candidateRoutes = OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
       bestRoutes,
       iterations
     );
     const candidateTokenOut =
-      this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+      OptimizedRoutes.calculateTokenOutByTokenIn(candidateRoutes).amount;
     if (candidateTokenOut.gt(bestTokenOut)) {
       bestRoutes = candidateRoutes;
       bestTokenOut = candidateTokenOut;
@@ -332,7 +333,7 @@ export class OptimizedRoutes {
       });
 
       let candidateTokenOut =
-        this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+        OptimizedRoutes.calculateTokenOutByTokenIn(candidateRoutes).amount;
 
       if (candidateTokenOut.gt(bestTokenOut)) {
         bestRoutes = candidateRoutes;
@@ -341,12 +342,12 @@ export class OptimizedRoutes {
         return bestRoutes;
       }
 
-      candidateRoutes = this.approximateOptimizedRoutesByTokenIn(
+      candidateRoutes = OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
         candidateRoutes,
         iterations
       );
       candidateTokenOut =
-        this.calculateTokenOutByTokenIn(candidateRoutes).amount;
+        OptimizedRoutes.calculateTokenOutByTokenIn(candidateRoutes).amount;
 
       if (candidateTokenOut.gt(bestTokenOut)) {
         bestRoutes = candidateRoutes;
@@ -356,10 +357,10 @@ export class OptimizedRoutes {
       }
     }
 
-    return this.unwrapCachedPoolRoutes(bestRoutes);
+    return OptimizedRoutes.unwrapCachedPoolRoutes(bestRoutes);
   }
 
-  approximateOptimizedRoutesByTokenIn(
+  static approximateOptimizedRoutesByTokenIn(
     routes: RouteWithAmount[],
     iterations: number
   ): RouteWithAmount[] {
@@ -389,11 +390,13 @@ export class OptimizedRoutes {
       let sumSPaSDividedByDerivativeSPaSs = new Dec(0);
 
       for (const route of routes) {
-        const spotPriceAfterSwap = this.calculateTokenOutByTokenIn([
+        const spotPriceAfterSwap = OptimizedRoutes.calculateTokenOutByTokenIn([
           route,
         ]).afterSpotPriceInOverOut;
         const derivativeSPaS =
-          this.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(route);
+          OptimizedRoutes.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+            route
+          );
 
         spotPricesAfterSwap.push(spotPriceAfterSwap);
         derivativeSPaSs.push(derivativeSPaS);
@@ -470,7 +473,7 @@ export class OptimizedRoutes {
     });
   }
 
-  protected calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+  protected static calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
     route: RouteWithAmount
   ): Dec {
     // Method name too long… but meaningful
@@ -547,7 +550,7 @@ export class OptimizedRoutes {
     return dec;
   }
 
-  calculateTokenOutByTokenIn(paths: RouteWithAmount[]): {
+  static calculateTokenOutByTokenIn(paths: RouteWithAmount[]): {
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
@@ -677,7 +680,9 @@ export class OptimizedRoutes {
    * @param pools
    * @protected
    */
-  protected wrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
+  protected static wrapCachedPools(
+    pools: ReadonlyArray<Pool>
+  ): ReadonlyArray<Pool> {
     return pools.map((pool) => {
       if (pool instanceof CachedPool) {
         return pool;
@@ -693,7 +698,9 @@ export class OptimizedRoutes {
     });
   }
 
-  protected unwrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
+  protected static unwrapCachedPools(
+    pools: ReadonlyArray<Pool>
+  ): ReadonlyArray<Pool> {
     return pools.map((pool) => {
       if (pool instanceof CachedPool) {
         return pool.pool;
@@ -702,20 +709,20 @@ export class OptimizedRoutes {
     });
   }
 
-  protected wrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+  protected static wrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
     return routes.map((r) => {
       return {
         ...r,
-        pools: this.wrapCachedPools(r.pools),
+        pools: OptimizedRoutes.wrapCachedPools(r.pools),
       };
     });
   }
 
-  protected unwrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+  protected static unwrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
     return routes.map((r) => {
       return {
         ...r,
-        pools: this.unwrapCachedPools(r.pools),
+        pools: OptimizedRoutes.unwrapCachedPools(r.pools),
       };
     });
   }
