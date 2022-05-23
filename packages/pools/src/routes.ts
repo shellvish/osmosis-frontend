@@ -1,9 +1,10 @@
 import { Dec, Int } from "@keplr-wallet/unit";
 import { Pool } from "./interface";
 import { NoPoolsError, NotEnoughLiquidityError } from "./errors";
+import { CachedPool } from "./cache";
 
 export interface Route {
-  pools: Pool[];
+  pools: ReadonlyArray<Pool>;
   // tokenOutDenoms means the token to come out from each pool.
   // This should the same length with the pools.
   // RoutePath consists of token in -> pool -> token out -> pool -> token out...
@@ -17,6 +18,8 @@ export interface RouteWithAmount extends Route {
 }
 
 export class OptimizedRoutes {
+  protected static SymbolCachedPool = Symbol("cachedPool");
+
   protected _pools: ReadonlyArray<Pool>;
   protected candidatePathsCache = new Map<string, Route[]>();
 
@@ -104,51 +107,53 @@ export class OptimizedRoutes {
       permitIntermediate
     );
 
-    return candidates
-      .filter((pool) => {
-        if (pool.pools.length === 0) {
-          return false;
-        }
+    return this.unwrapCachedPoolRoutes(
+      this.wrapCachedPoolRoutes(candidates)
+        .filter((pool) => {
+          if (pool.pools.length === 0) {
+            return false;
+          }
 
-        if (
-          pool.pools[0]
-            .getLimitAmountByTokenIn(tokenIn.denom)
-            .lt(tokenIn.amount)
-        ) {
-          return false;
-        }
+          if (
+            pool.pools[0]
+              .getLimitAmountByTokenIn(tokenIn.denom)
+              .lt(tokenIn.amount)
+          ) {
+            return false;
+          }
 
-        try {
-          // The error can be thrown if pool's asset or token in amount is too low or due to other unknown reasons...
-          // If we don't handle thrown error, the remaining calculations for other pools also aren't processed.
-          // For convenience, just filter such case if error thrown.
-          this.calculateTokenOutByTokenIn([
+          try {
+            // The error can be thrown if pool's asset or token in amount is too low or due to other unknown reasons...
+            // If we don't handle thrown error, the remaining calculations for other pools also aren't processed.
+            // For convenience, just filter such case if error thrown.
+            this.calculateTokenOutByTokenIn([
+              {
+                amount: tokenIn.amount,
+                ...pool,
+              },
+            ]);
+            return true;
+          } catch {
+            return false;
+          }
+        })
+        .sort((pool1, pool2) => {
+          const tokenOut1 = this.calculateTokenOutByTokenIn([
             {
               amount: tokenIn.amount,
-              ...pool,
+              ...pool1,
             },
           ]);
-          return true;
-        } catch {
-          return false;
-        }
-      })
-      .sort((pool1, pool2) => {
-        const tokenOut1 = this.calculateTokenOutByTokenIn([
-          {
-            amount: tokenIn.amount,
-            ...pool1,
-          },
-        ]);
-        const tokenOut2 = this.calculateTokenOutByTokenIn([
-          {
-            amount: tokenIn.amount,
-            ...pool2,
-          },
-        ]);
+          const tokenOut2 = this.calculateTokenOutByTokenIn([
+            {
+              amount: tokenIn.amount,
+              ...pool2,
+            },
+          ]);
 
-        return tokenOut1.amount.gt(tokenOut2.amount) ? -1 : 1;
-      });
+          return tokenOut1.amount.gt(tokenOut2.amount) ? -1 : 1;
+        })
+    );
   }
 
   /**
@@ -181,7 +186,8 @@ export class OptimizedRoutes {
     const multihopCandiateHasOnlyOutIntermediates: Map<string, Pool[]> =
       new Map();
 
-    for (const pool of this.pools) {
+    const cachedPools = this.wrapCachedPools(this.pools);
+    for (const pool of cachedPools) {
       const hasTokenIn = pool.hasPoolAsset(tokenInDenom);
       const hasTokenOut = pool.hasPoolAsset(tokenOutDenom);
       if (hasTokenIn && hasTokenOut) {
@@ -229,7 +235,7 @@ export class OptimizedRoutes {
 
     this.candidatePathsCache.set(cacheKey, filteredRoutePaths);
 
-    return filteredRoutePaths;
+    return this.unwrapCachedPoolRoutes(filteredRoutePaths);
   }
 
   getOptimizedRoutesByTokenIn(
@@ -246,10 +252,8 @@ export class OptimizedRoutes {
     }
 
     // Sort routes by expected token out.
-    let sortedRoutes = this.getRoutesSortedByExpectedTokenOut(
-      tokenIn,
-      tokenOutDenom,
-      true
+    let sortedRoutes = this.wrapCachedPoolRoutes(
+      this.getRoutesSortedByExpectedTokenOut(tokenIn, tokenOutDenom, true)
     );
 
     // Do not need more routes than max routes.
@@ -352,7 +356,7 @@ export class OptimizedRoutes {
       }
     }
 
-    return bestRoutes;
+    return this.unwrapCachedPoolRoutes(bestRoutes);
   }
 
   approximateOptimizedRoutesByTokenIn(
@@ -659,5 +663,60 @@ export class OptimizedRoutes {
       swapFee: totalSwapFee,
       slippage,
     };
+  }
+
+  /**
+   * Returns the cached pools from pools.
+   * If the element of pools is instance of CachedPools, just use as it is.
+   * If the element of pools has `SymbolCachedPool` field, use that field.
+   * If not, create new CachedPool and set that to `SymbolCachedPool` field.
+   *
+   *
+   * `CachedPool` is used internally. Even if each method returns a `CachedPool`, it is safe in the `Pool` interface for the developers.
+   * But they can't use `instanceof` or typecasting. Make sure to return unwrapped pools so that they don't have to care about type of `CachedPools`.
+   * @param pools
+   * @protected
+   */
+  protected wrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
+    return pools.map((pool) => {
+      if (pool instanceof CachedPool) {
+        return pool;
+      }
+
+      if ((pool as any)[OptimizedRoutes.SymbolCachedPool]) {
+        return (pool as any)[OptimizedRoutes.SymbolCachedPool] as Pool;
+      }
+
+      const cachedPool = new CachedPool(pool);
+      (pool as any)[OptimizedRoutes.SymbolCachedPool] = cachedPool;
+      return cachedPool;
+    });
+  }
+
+  protected unwrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
+    return pools.map((pool) => {
+      if (pool instanceof CachedPool) {
+        return pool.pool;
+      }
+      return pool;
+    });
+  }
+
+  protected wrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+    return routes.map((r) => {
+      return {
+        ...r,
+        pools: this.wrapCachedPools(r.pools),
+      };
+    });
+  }
+
+  protected unwrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+    return routes.map((r) => {
+      return {
+        ...r,
+        pools: this.unwrapCachedPools(r.pools),
+      };
+    });
   }
 }
