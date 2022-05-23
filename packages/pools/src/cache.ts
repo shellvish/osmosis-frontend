@@ -135,11 +135,11 @@ export class CachedPool implements Pool {
     tokenOut: { denom: string; amount: Int },
     tokenInDenom: string
   ): {
+    afterPool: Pool;
+
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
-    afterSpotPriceInOverOut: Dec;
-    afterSpotPriceOutOverIn: Dec;
     effectivePriceInOverOut: Dec;
     effectivePriceOutOverIn: Dec;
     slippage: Dec;
@@ -149,7 +149,11 @@ export class CachedPool implements Pool {
         tokenOut.denom
       }/${tokenInDenom}`,
       () => {
-        return this.pool.getTokenInByTokenOut(tokenOut, tokenInDenom);
+        const res = this.pool.getTokenInByTokenOut(tokenOut, tokenInDenom);
+        return {
+          ...res,
+          afterPool: new CachedPool(res.afterPool),
+        };
       }
     );
   }
@@ -158,11 +162,11 @@ export class CachedPool implements Pool {
     tokenIn: { denom: string; amount: Int },
     tokenOutDenom: string
   ): {
+    afterPool: Pool;
+
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
-    afterSpotPriceInOverOut: Dec;
-    afterSpotPriceOutOverIn: Dec;
     effectivePriceInOverOut: Dec;
     effectivePriceOutOverIn: Dec;
     slippage: Dec;
@@ -172,7 +176,11 @@ export class CachedPool implements Pool {
         tokenIn.denom
       }/${tokenOutDenom}`,
       () => {
-        return this.pool.getTokenOutByTokenIn(tokenIn, tokenOutDenom);
+        const res = this.pool.getTokenOutByTokenIn(tokenIn, tokenOutDenom);
+        return {
+          ...res,
+          afterPool: new CachedPool(res.afterPool),
+        };
       }
     );
   }

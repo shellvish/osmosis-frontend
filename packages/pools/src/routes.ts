@@ -522,7 +522,12 @@ export class OptimizedRoutes {
         denom: tokenOutDenom,
         amount: tokenOut.amount,
       });
-      spotPrices.push(tokenOut.afterSpotPriceInOverOut);
+      spotPrices.push(
+        tokenOut.afterPool.getSpotPriceInOverOut(
+          tokenIns[i].denom,
+          tokenOutDenom
+        )
+      );
     }
 
     let dec = new Dec(0);
@@ -616,7 +621,7 @@ export class OptimizedRoutes {
           tokenOut.beforeSpotPriceInOverOut
         );
         afterSpotPriceInOverOut = afterSpotPriceInOverOut.mulTruncate(
-          tokenOut.afterSpotPriceInOverOut
+          tokenOut.afterPool.getSpotPriceInOverOut(previousInDenom, outDenom)
         );
         effectivePriceInOverOut = effectivePriceInOverOut.mulTruncate(
           tokenOut.effectivePriceInOverOut

@@ -1,5 +1,5 @@
 import { Pool } from "./interface";
-import { Dec, Int } from "@keplr-wallet/unit";
+import { Coin, Dec, Int } from "@keplr-wallet/unit";
 import { WeightedPoolMath } from "@osmosis-labs/math";
 
 export interface WeightedPoolRaw {
@@ -156,11 +156,11 @@ export class WeightedPool implements Pool {
     tokenOut: { denom: string; amount: Int },
     tokenInDenom: string
   ): {
+    afterPool: Pool;
+
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
-    afterSpotPriceInOverOut: Dec;
-    afterSpotPriceOutOverIn: Dec;
     effectivePriceInOverOut: Dec;
     effectivePriceOutOverIn: Dec;
     slippage: Dec;
@@ -185,31 +185,28 @@ export class WeightedPool implements Pool {
       this.swapFee
     ).truncate();
 
-    const afterSpotPriceInOverOut = WeightedPoolMath.calcSpotPrice(
-      new Dec(inPoolAsset.amount).add(new Dec(tokenInAmount)),
-      new Dec(inPoolAsset.weight),
-      new Dec(outPoolAsset.amount).sub(new Dec(tokenOut.amount)),
-      new Dec(outPoolAsset.weight),
-      this.swapFee
-    );
-
-    if (afterSpotPriceInOverOut.lt(beforeSpotPriceInOverOut)) {
-      throw new Error("Spot price can't be decreased after swap");
-    }
-
     const effectivePrice = new Dec(tokenInAmount).quo(new Dec(tokenOut.amount));
     const slippage = effectivePrice
       .quo(beforeSpotPriceInOverOut)
       .sub(new Dec("1"));
 
     return {
+      afterPool: WeightedPool.applyWeightedPoolRawPoolAssetChanges(this.raw, [
+        {
+          denom: tokenInDenom,
+          amount: tokenInAmount,
+        },
+        {
+          denom: tokenOut.denom,
+          amount: tokenOut.amount.neg(),
+        },
+      ]),
+
       amount: tokenInAmount,
       beforeSpotPriceInOverOut,
       beforeSpotPriceOutOverIn: new Dec(1).quoTruncate(
         beforeSpotPriceInOverOut
       ),
-      afterSpotPriceInOverOut,
-      afterSpotPriceOutOverIn: new Dec(1).quoTruncate(afterSpotPriceInOverOut),
       effectivePriceInOverOut: effectivePrice,
       effectivePriceOutOverIn: new Dec(1).quoTruncate(effectivePrice),
       slippage: slippage,
@@ -220,11 +217,11 @@ export class WeightedPool implements Pool {
     tokenIn: { denom: string; amount: Int },
     tokenOutDenom: string
   ): {
+    afterPool: Pool;
+
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
-    afterSpotPriceInOverOut: Dec;
-    afterSpotPriceOutOverIn: Dec;
     effectivePriceInOverOut: Dec;
     effectivePriceOutOverIn: Dec;
     slippage: Dec;
@@ -249,31 +246,28 @@ export class WeightedPool implements Pool {
       this.swapFee
     ).truncate();
 
-    const afterSpotPriceInOverOut = WeightedPoolMath.calcSpotPrice(
-      new Dec(inPoolAsset.amount).add(new Dec(tokenIn.amount)),
-      new Dec(inPoolAsset.weight),
-      new Dec(outPoolAsset.amount).sub(new Dec(tokenOutAmount)),
-      new Dec(outPoolAsset.weight),
-      this.swapFee
-    );
-
-    if (afterSpotPriceInOverOut.lt(beforeSpotPriceInOverOut)) {
-      throw new Error("Spot price can't be decreased after swap");
-    }
-
     const effectivePrice = new Dec(tokenIn.amount).quo(new Dec(tokenOutAmount));
     const slippage = effectivePrice
       .quo(beforeSpotPriceInOverOut)
       .sub(new Dec("1"));
 
     return {
+      afterPool: WeightedPool.applyWeightedPoolRawPoolAssetChanges(this.raw, [
+        {
+          denom: tokenIn.denom,
+          amount: tokenIn.amount,
+        },
+        {
+          denom: tokenOutDenom,
+          amount: tokenOutAmount.neg(),
+        },
+      ]),
+
       amount: tokenOutAmount,
       beforeSpotPriceInOverOut,
       beforeSpotPriceOutOverIn: new Dec(1).quoTruncate(
         beforeSpotPriceInOverOut
       ),
-      afterSpotPriceInOverOut,
-      afterSpotPriceOutOverIn: new Dec(1).quoTruncate(afterSpotPriceInOverOut),
       effectivePriceInOverOut: effectivePrice,
       effectivePriceOutOverIn: new Dec(1).quoTruncate(effectivePrice),
       slippage: slippage,
@@ -315,5 +309,41 @@ export class WeightedPool implements Pool {
           )
           .mul(inPoolAsset.weight.toDec())
       );
+  }
+
+  protected static applyWeightedPoolRawPoolAssetChanges(
+    raw: WeightedPoolRaw,
+    changes: Coin[]
+  ): WeightedPool {
+    const poolAssets = raw.poolAssets;
+
+    const changesMap: Map<string, Int> = new Map();
+    for (const change of changes) {
+      if (changesMap.has(change.denom)) {
+        throw new Error(`Changes are duplicated: ${change.denom}`);
+      }
+
+      changesMap.set(change.denom, change.amount);
+    }
+
+    for (const poolAsset of poolAssets) {
+      const change = changesMap.get(poolAsset.token.denom);
+      if (change) {
+        poolAsset.token.amount = new Int(poolAsset.token.amount)
+          .add(change)
+          .toString();
+
+        changesMap.delete(poolAsset.token.denom);
+      }
+    }
+
+    if (changesMap.size > 0) {
+      throw new Error("There are remaining changes");
+    }
+
+    return new WeightedPool({
+      ...raw,
+      poolAssets,
+    });
   }
 }
