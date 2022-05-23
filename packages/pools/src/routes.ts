@@ -680,9 +680,7 @@ export class OptimizedRoutes {
    * @param pools
    * @protected
    */
-  protected static wrapCachedPools(
-    pools: ReadonlyArray<Pool>
-  ): ReadonlyArray<Pool> {
+  static wrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
     return pools.map((pool) => {
       if (pool instanceof CachedPool) {
         return pool;
@@ -698,9 +696,7 @@ export class OptimizedRoutes {
     });
   }
 
-  protected static unwrapCachedPools(
-    pools: ReadonlyArray<Pool>
-  ): ReadonlyArray<Pool> {
+  static unwrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
     return pools.map((pool) => {
       if (pool instanceof CachedPool) {
         return pool.pool;
@@ -709,7 +705,7 @@ export class OptimizedRoutes {
     });
   }
 
-  protected static wrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+  static wrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
     return routes.map((r) => {
       return {
         ...r,
@@ -718,7 +714,7 @@ export class OptimizedRoutes {
     });
   }
 
-  protected static unwrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
+  static unwrapCachedPoolRoutes<R extends Route>(routes: R[]): R[] {
     return routes.map((r) => {
       return {
         ...r,
