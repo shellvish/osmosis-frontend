@@ -1,31 +1,34 @@
 import { Pool } from "./interface";
 import { Dec, Int } from "@keplr-wallet/unit";
+import { SimpleLRUCache } from "./lru-cache";
 
 /**
  * CachedPool maintains some pool's result to cache.
  * Used for simplifying complex calculation such as smart order router
  * by separating the actual logic and caching logic.
- * TODO: Currently, there is no logic to remove outdated cache data.
- *       Thus, memory leak can happen.
- *       Make the logic to remove outdated cache (by using LRU?)
  */
 export class CachedPool implements Pool {
-  protected cached: Map<string, any> = new Map();
+  protected cache: SimpleLRUCache;
 
-  constructor(public readonly pool: Pool) {}
+  constructor(
+    public readonly pool: Pool,
+    public readonly cacheMaxSize: number = 30
+  ) {
+    this.cache = new SimpleLRUCache(cacheMaxSize);
+  }
 
   clearCache() {
-    this.cached = new Map();
+    this.cache.clear();
   }
 
   protected getOrSetCache<R>(key: string, fn: () => R): R {
-    const cached = this.cached.get(key);
+    const cached = this.cache.get(key);
     if (cached) {
       return cached;
     }
 
     const value = fn();
-    this.cached.set(key, value);
+    this.cache.set(key, value);
     return value;
   }
 
