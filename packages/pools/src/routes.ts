@@ -300,17 +300,21 @@ export class OptimizedRoutes {
     let bestTokenOut: Int =
       OptimizedRoutes.calculateTokenOutByTokenIn(bestRoutes).amount;
 
-    const candidateRoutes = OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
-      bestRoutes,
-      iterations
-    );
-    const candidateTokenOut =
-      OptimizedRoutes.calculateTokenOutByTokenIn(candidateRoutes).amount;
-    if (candidateTokenOut.gt(bestTokenOut)) {
-      bestRoutes = candidateRoutes;
-      bestTokenOut = candidateTokenOut;
-    } else {
-      return bestRoutes;
+    // If there is only one route, the approximation result is the same. So there is no need to do that.
+    if (bestRoutes.length > 1) {
+      const candidateRoutes =
+        OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+          bestRoutes,
+          iterations
+        );
+      const candidateTokenOut =
+        OptimizedRoutes.calculateTokenOutByTokenIn(candidateRoutes).amount;
+      if (candidateTokenOut.gt(bestTokenOut)) {
+        bestRoutes = candidateRoutes;
+        bestTokenOut = candidateTokenOut;
+      } else {
+        return bestRoutes;
+      }
     }
 
     const initialNumBestRoutes = initialSwapAmounts.length;
