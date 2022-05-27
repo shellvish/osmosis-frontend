@@ -319,7 +319,7 @@ export class OptimizedRoutes {
 
     const initialNumBestRoutes = initialSwapAmounts.length;
 
-    for (let i = initialNumBestRoutes - 1; i < sortedRoutes.length; i++) {
+    for (let i = initialNumBestRoutes; i < sortedRoutes.length; i++) {
       const scaleFactor = new Dec(bestRoutes.length).quo(
         new Dec(bestRoutes.length + 1)
       );
