@@ -6,5 +6,6 @@ dist
 prod
 build
 yarn-error.log
+coverage
 
 src/styles/index.scss
