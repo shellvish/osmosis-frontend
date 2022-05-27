@@ -347,8 +347,6 @@ export class OptimizedRoutes {
       if (candidateTokenOut.gt(bestTokenOut)) {
         bestRoutes = candidateRoutes;
         bestTokenOut = candidateTokenOut;
-      } else {
-        return bestRoutes;
       }
 
       candidateRoutes = OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
