@@ -38,6 +38,11 @@ export class OptimizedRoutes {
 
   protected clearCache() {
     this.candidatePathsCache = new Map();
+    OptimizedRoutes.wrapCachedPools(this.pools).forEach((pool) => {
+      if (pool instanceof CachedPool) {
+        pool.clearCache();
+      }
+    });
   }
 
   /**
