@@ -42,17 +42,15 @@ export interface WeightedPoolRaw {
     // Int
     amount: string;
   };
-  poolAssets: [
-    {
+  poolAssets: {
+    // Int
+    weight: string;
+    token: {
+      denom: string;
       // Int
-      weight: string;
-      token: {
-        denom: string;
-        // Int
-        amount: string;
-      };
-    }
-  ];
+      amount: string;
+    };
+  }[];
 }
 
 export class WeightedPool implements Pool {
