@@ -119,11 +119,7 @@ export class OptimizedRoutes {
             return false;
           }
 
-          if (
-            pool.pools[0]
-              .getLimitAmountByTokenIn(tokenIn.denom)
-              .lt(tokenIn.amount)
-          ) {
+          if (pool.pools[0].getLimitAmount(tokenIn.denom).lt(tokenIn.amount)) {
             return false;
           }
 
@@ -267,7 +263,7 @@ export class OptimizedRoutes {
     const initialSwapAmounts: Int[] = [];
     let totalLimitAmount = new Int(0);
     for (const route of sortedRoutes) {
-      const limitAmount = route.pools[0].getLimitAmountByTokenIn(tokenIn.denom);
+      const limitAmount = route.pools[0].getLimitAmount(tokenIn.denom);
 
       totalLimitAmount = totalLimitAmount.add(limitAmount);
 
@@ -456,7 +452,7 @@ export class OptimizedRoutes {
 
         if (
           route.pools[0]
-            .getLimitAmountByTokenIn(route.tokenInDenom)
+            .getLimitAmount(route.tokenInDenom)
             .lte(newTokenInAmount)
         ) {
           breakIteration = true;
@@ -490,7 +486,7 @@ export class OptimizedRoutes {
     }
 
     if (route.pools.length === 1) {
-      return route.pools[0].getDerivativeSpotPriceAfterSwapTokenIn(
+      return route.pools[0].getDerivativeSpotPriceAfterTokenOutByTokenIn(
         {
           denom: route.tokenInDenom,
           amount: route.amount,
@@ -541,7 +537,7 @@ export class OptimizedRoutes {
     for (let i = 0; i < route.pools.length; i++) {
       const pool = route.pools[i];
 
-      const derivativeSPaS = pool.getDerivativeSpotPriceAfterSwapTokenIn(
+      const derivativeSPaS = pool.getDerivativeSpotPriceAfterTokenOutByTokenIn(
         tokenIns[i],
         route.tokenOutDenoms[i]
       );

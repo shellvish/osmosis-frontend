@@ -73,8 +73,8 @@ export interface Pool {
     slippage: Dec;
   };
 
-  getLimitAmountByTokenIn(denom: string): Int;
-  getDerivativeSpotPriceAfterSwapTokenIn(
+  getLimitAmount(denom: string): Int;
+  getDerivativeSpotPriceAfterTokenOutByTokenIn(
     tokenIn: {
       denom: string;
       amount: Int;

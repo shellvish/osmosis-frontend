@@ -272,14 +272,14 @@ export class WeightedPool implements Pool {
     };
   }
 
-  getLimitAmountByTokenIn(denom: string): Int {
+  getLimitAmount(denom: string): Int {
     return this.getPoolAsset(denom)
       .amount.toDec()
       .mul(new Dec("0.3"))
       .truncate();
   }
 
-  getDerivativeSpotPriceAfterSwapTokenIn(
+  getDerivativeSpotPriceAfterTokenOutByTokenIn(
     tokenIn: { denom: string; amount: Int },
     tokenOutDenom: string
   ): Dec {

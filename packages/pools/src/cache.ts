@@ -188,13 +188,13 @@ export class CachedPool implements Pool {
     );
   }
 
-  getLimitAmountByTokenIn(denom: string): Int {
+  getLimitAmount(denom: string): Int {
     return this.getOrSetCache(`getLimitAmountByTokenIn/${denom}`, () => {
-      return this.pool.getLimitAmountByTokenIn(denom);
+      return this.pool.getLimitAmount(denom);
     });
   }
 
-  getDerivativeSpotPriceAfterSwapTokenIn(
+  getDerivativeSpotPriceAfterTokenOutByTokenIn(
     tokenIn: { denom: string; amount: Int },
     tokenOutDenom: string
   ): Dec {
@@ -203,7 +203,7 @@ export class CachedPool implements Pool {
         tokenIn.denom
       }/${tokenOutDenom}`,
       () => {
-        return this.pool.getDerivativeSpotPriceAfterSwapTokenIn(
+        return this.pool.getDerivativeSpotPriceAfterTokenOutByTokenIn(
           tokenIn,
           tokenOutDenom
         );
