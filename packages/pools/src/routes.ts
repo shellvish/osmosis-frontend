@@ -313,7 +313,7 @@ export class OptimizedRoutes {
         bestRoutes = candidateRoutes;
         bestTokenOut = candidateTokenOut;
       } else {
-        return bestRoutes;
+        return OptimizedRoutes.unwrapCachedPoolRoutes(bestRoutes);
       }
     }
 
@@ -360,7 +360,7 @@ export class OptimizedRoutes {
         bestRoutes = candidateRoutes;
         bestTokenOut = candidateTokenOut;
       } else {
-        return bestRoutes;
+        return OptimizedRoutes.unwrapCachedPoolRoutes(bestRoutes);
       }
     }
 
