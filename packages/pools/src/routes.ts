@@ -21,7 +21,7 @@ export class OptimizedRoutes {
   protected static SymbolCachedPool = Symbol("cachedPool");
 
   protected _pools: ReadonlyArray<Pool>;
-  protected candidatePathsCache = new Map<string, Route[]>();
+  protected candidateRoutesCache = new Map<string, Route[]>();
 
   constructor(pools: ReadonlyArray<Pool>) {
     this._pools = pools;
@@ -37,7 +37,7 @@ export class OptimizedRoutes {
   }
 
   protected clearCache() {
-    this.candidatePathsCache = new Map();
+    this.candidateRoutesCache = new Map();
     OptimizedRoutes.wrapCachedPools(this.pools).forEach((pool) => {
       if (pool instanceof CachedPool) {
         pool.clearCache();
@@ -174,12 +174,12 @@ export class OptimizedRoutes {
     }
 
     const cacheKey = `${tokenInDenom}/${tokenOutDenom}/${permitIntermediate}`;
-    const cached = this.candidatePathsCache.get(cacheKey);
+    const cached = this.candidateRoutesCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const filteredRoutePaths: Route[] = [];
+    const filteredRouteRoutes: Route[] = [];
 
     // Key is denom.
     const multihopCandiateHasOnlyInIntermediates: Map<string, Pool[]> =
@@ -193,7 +193,7 @@ export class OptimizedRoutes {
       const hasTokenOut = pool.hasPoolAsset(tokenOutDenom);
       if (hasTokenIn && hasTokenOut) {
         // If the pool has both token in and token out, we can swap directly from this pool.
-        filteredRoutePaths.push({
+        filteredRouteRoutes.push({
           pools: [pool],
           tokenOutDenoms: [tokenOutDenom],
           tokenInDenom,
@@ -234,9 +234,9 @@ export class OptimizedRoutes {
       }
     }
 
-    this.candidatePathsCache.set(cacheKey, filteredRoutePaths);
+    this.candidateRoutesCache.set(cacheKey, filteredRouteRoutes);
 
-    return OptimizedRoutes.unwrapCachedPoolRoutes(filteredRoutePaths);
+    return OptimizedRoutes.unwrapCachedPoolRoutes(filteredRouteRoutes);
   }
 
   getOptimizedRoutesByTokenIn(
@@ -558,7 +558,7 @@ export class OptimizedRoutes {
     return dec;
   }
 
-  static calculateTokenOutByTokenIn(paths: RouteWithAmount[]): {
+  static calculateTokenOutByTokenIn(routes: RouteWithAmount[]): {
     amount: Int;
     beforeSpotPriceInOverOut: Dec;
     beforeSpotPriceOutOverIn: Dec;
@@ -569,7 +569,7 @@ export class OptimizedRoutes {
     swapFee: Dec;
     slippage: Dec;
   } {
-    if (paths.length === 0) {
+    if (routes.length === 0) {
       throw new Error("Paths are empty");
     }
 
@@ -580,40 +580,42 @@ export class OptimizedRoutes {
     let totalSwapFee: Dec = new Dec(0);
 
     let sumAmount = new Int(0);
-    for (const path of paths) {
+    for (const path of routes) {
       sumAmount = sumAmount.add(path.amount);
     }
 
     let outDenom: string | undefined;
-    for (const path of paths) {
+    for (const route of routes) {
       if (
-        path.pools.length !== path.tokenOutDenoms.length ||
-        path.pools.length === 0
+        route.pools.length !== route.tokenOutDenoms.length ||
+        route.pools.length === 0
       ) {
         throw new Error("Invalid path");
       }
 
       if (!outDenom) {
-        outDenom = path.tokenOutDenoms[path.tokenOutDenoms.length - 1];
+        outDenom = route.tokenOutDenoms[route.tokenOutDenoms.length - 1];
       } else if (
-        outDenom !== path.tokenOutDenoms[path.tokenOutDenoms.length - 1]
+        outDenom !== route.tokenOutDenoms[route.tokenOutDenoms.length - 1]
       ) {
         throw new Error("Paths have different out denom");
       }
 
-      const amountFraction = path.amount.toDec().quoTruncate(sumAmount.toDec());
+      const amountFraction = route.amount
+        .toDec()
+        .quoTruncate(sumAmount.toDec());
 
-      let previousInDenom = path.tokenInDenom;
-      let previousInAmount = path.amount;
+      let previousInDenom = route.tokenInDenom;
+      let previousInAmount = route.amount;
 
       let beforeSpotPriceInOverOut: Dec = new Dec(1);
       let afterSpotPriceInOverOut: Dec = new Dec(1);
       let effectivePriceInOverOut: Dec = new Dec(1);
       let swapFee: Dec = new Dec(0);
 
-      for (let i = 0; i < path.pools.length; i++) {
-        const pool = path.pools[i];
-        const outDenom = path.tokenOutDenoms[i];
+      for (let i = 0; i < route.pools.length; i++) {
+        const pool = route.pools[i];
+        const outDenom = route.tokenOutDenoms[i];
 
         const tokenOut = pool.getTokenOutByTokenIn(
           { denom: previousInDenom, amount: previousInAmount },
@@ -633,7 +635,7 @@ export class OptimizedRoutes {
           new Dec(1).sub(swapFee).mulTruncate(pool.swapFee)
         );
 
-        if (i === path.pools.length - 1) {
+        if (i === route.pools.length - 1) {
           totalOutAmount = totalOutAmount.add(tokenOut.amount);
 
           totalBeforeSpotPriceInOverOut = totalBeforeSpotPriceInOverOut.add(
