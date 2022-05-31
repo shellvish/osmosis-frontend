@@ -17,15 +17,15 @@ export interface Pool {
   get swapFee(): Dec;
   get exitFee(): Dec;
 
-  get poolAssets(): {
-    denom: string;
-    amount: Int;
-    weight: Int;
-  }[];
+  get poolAssets(): ReadonlyArray<{
+    readonly denom: string;
+    readonly amount: Int;
+    readonly weight: Int;
+  }>;
   getPoolAsset(denom: string): {
-    denom: string;
-    amount: Int;
-    weight: Int;
+    readonly denom: string;
+    readonly amount: Int;
+    readonly weight: Int;
   };
   hasPoolAsset(denom: string): boolean;
 
@@ -42,42 +42,42 @@ export interface Pool {
 
   getTokenOutByTokenIn(
     tokenIn: {
-      denom: string;
-      amount: Int;
+      readonly denom: string;
+      readonly amount: Int;
     },
     tokenOutDenom: string
   ): {
-    afterPool: Pool;
+    readonly afterPool: Pool;
 
-    amount: Int;
-    beforeSpotPriceInOverOut: Dec;
-    beforeSpotPriceOutOverIn: Dec;
-    effectivePriceInOverOut: Dec;
-    effectivePriceOutOverIn: Dec;
-    slippage: Dec;
+    readonly amount: Int;
+    readonly beforeSpotPriceInOverOut: Dec;
+    readonly beforeSpotPriceOutOverIn: Dec;
+    readonly effectivePriceInOverOut: Dec;
+    readonly effectivePriceOutOverIn: Dec;
+    readonly slippage: Dec;
   };
   getTokenInByTokenOut(
     tokenOut: {
-      denom: string;
-      amount: Int;
+      readonly denom: string;
+      readonly amount: Int;
     },
     tokenInDenom: string
   ): {
-    afterPool: Pool;
+    readonly afterPool: Pool;
 
-    amount: Int;
-    beforeSpotPriceInOverOut: Dec;
-    beforeSpotPriceOutOverIn: Dec;
-    effectivePriceInOverOut: Dec;
-    effectivePriceOutOverIn: Dec;
-    slippage: Dec;
+    readonly amount: Int;
+    readonly beforeSpotPriceInOverOut: Dec;
+    readonly beforeSpotPriceOutOverIn: Dec;
+    readonly effectivePriceInOverOut: Dec;
+    readonly effectivePriceOutOverIn: Dec;
+    readonly slippage: Dec;
   };
 
   getLimitAmount(denom: string): Int;
   getDerivativeSpotPriceAfterTokenOutByTokenIn(
     tokenIn: {
-      denom: string;
-      amount: Int;
+      readonly denom: string;
+      readonly amount: Int;
     },
     tokenOutDenom: string
   ): Dec;

@@ -44,7 +44,7 @@ export class CachedPool implements Pool {
     });
   }
 
-  get poolAssets(): { denom: string; amount: Int; weight: Int }[] {
+  get poolAssets(): ReadonlyArray<{ denom: string; amount: Int; weight: Int }> {
     return this.getOrSetCache("poolAssets", () => {
       return this.pool.poolAssets;
     });

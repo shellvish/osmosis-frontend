@@ -4,17 +4,17 @@ import { NoPoolsError, NotEnoughLiquidityError } from "./errors";
 import { CachedPool } from "./cache";
 
 export interface Route {
-  pools: ReadonlyArray<Pool>;
+  readonly pools: ReadonlyArray<Pool>;
   // tokenOutDenoms means the token to come out from each pool.
   // This should the same length with the pools.
   // RoutePath consists of token in -> pool -> token out -> pool -> token out...
   // But, currently, only 1 intermediate can be supported.
-  tokenOutDenoms: string[];
-  tokenInDenom: string;
+  readonly tokenOutDenoms: ReadonlyArray<string>;
+  readonly tokenInDenom: string;
 }
 
 export interface RouteWithAmount extends Route {
-  amount: Int;
+  readonly amount: Int;
 }
 
 export class OptimizedRoutes {

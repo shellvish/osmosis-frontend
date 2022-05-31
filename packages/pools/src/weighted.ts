@@ -3,54 +3,54 @@ import { Coin, Dec, Int } from "@keplr-wallet/unit";
 import { WeightedPoolMath } from "@osmosis-labs/math";
 
 export interface WeightedPoolRaw {
-  id: string;
-  poolParams: {
-    lock: boolean;
+  readonly id: string;
+  readonly poolParams: {
+    readonly lock: boolean;
     // Dec
-    swapFee: string;
+    readonly swapFee: string;
     // Dec
-    exitFee: string;
-    smoothWeightChangeParams: {
+    readonly exitFee: string;
+    readonly smoothWeightChangeParams: {
       // Timestamp
-      start_time: string;
+      readonly start_time: string;
       // Seconds with s suffix. Ex) 3600s
-      duration: string;
-      initialPoolWeights: {
-        token: {
-          denom: string;
+      readonly duration: string;
+      readonly initialPoolWeights: ReadonlyArray<{
+        readonly token: {
+          readonly denom: string;
           // Int
-          amount: string;
+          readonly amount: string;
         };
         // Int
-        weight: string;
-      }[];
-      targetPoolWeights: {
-        token: {
-          denom: string;
+        readonly weight: string;
+      }>;
+      readonly targetPoolWeights: ReadonlyArray<{
+        readonly token: {
+          readonly denom: string;
           // Int
-          amount: string;
+          readonly amount: string;
         };
         // Int
-        weight: string;
-      }[];
+        readonly weight: string;
+      }>;
     } | null;
   };
   // Int
-  totalWeight: string;
-  totalShares: {
-    denom: string;
+  readonly totalWeight: string;
+  readonly totalShares: {
+    readonly denom: string;
     // Int
-    amount: string;
+    readonly amount: string;
   };
-  poolAssets: {
+  readonly poolAssets: ReadonlyArray<{
     // Int
-    weight: string;
-    token: {
-      denom: string;
+    readonly weight: string;
+    readonly token: {
+      readonly denom: string;
       // Int
-      amount: string;
+      readonly amount: string;
     };
-  }[];
+  }>;
 }
 
 export class WeightedPool implements Pool {
@@ -313,7 +313,15 @@ export class WeightedPool implements Pool {
     raw: WeightedPoolRaw,
     changes: Coin[]
   ): WeightedPool {
-    const poolAssets = raw.poolAssets;
+    const poolAssets = raw.poolAssets as {
+      // Int
+      weight: string;
+      token: {
+        denom: string;
+        // Int
+        amount: string;
+      };
+    }[];
 
     const changesMap: Map<string, Int> = new Map();
     for (const change of changes) {
