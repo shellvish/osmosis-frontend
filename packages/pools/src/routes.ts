@@ -419,28 +419,28 @@ export class OptimizedRoutes {
       const newTokenInAmounts: Int[] = tokenInAmounts.slice();
       let breakIteration = false;
 
-      for (let i = 0; i < routes.length; i++) {
-        const route = routes[i];
+      for (let j = 0; j < routes.length; j++) {
+        const route = routes[j];
 
         const newTokenInAmount: Int = (() => {
-          if (i === routes.length - 1) {
+          if (j === routes.length - 1) {
             // The last one would be subtraction of total amount and sum of prior amounts.
             // If this is done by actually calculating, the total amount could be  something like 999999uosmo
             // This could cause confusion to the users in the UI
             // thus this is done to set the exact token it amount set by the user
             let sub = new Int(0);
 
-            for (let j = 0; j < i; j++) {
-              sub = sub.add(newTokenInAmounts[j]);
+            for (let k = 0; k < j; k++) {
+              sub = sub.add(newTokenInAmounts[k]);
             }
 
             return totalTokenInAmount.sub(sub);
           }
 
-          return tokenInAmounts[i].add(
+          return tokenInAmounts[j].add(
             targetSpotPriceInOverOut
-              .sub(spotPricesAfterSwap[i])
-              .quo(derivativeSPaSs[i])
+              .sub(spotPricesAfterSwap[j])
+              .quo(derivativeSPaSs[j])
               .truncate()
           );
         })();
@@ -459,7 +459,7 @@ export class OptimizedRoutes {
           break;
         }
 
-        newTokenInAmounts[i] = newTokenInAmount;
+        newTokenInAmounts[j] = newTokenInAmount;
       }
 
       if (breakIteration) {
