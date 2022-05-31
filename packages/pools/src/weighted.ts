@@ -283,30 +283,31 @@ export class WeightedPool implements Pool {
     tokenIn: { denom: string; amount: Int },
     tokenOutDenom: string
   ): Dec {
+    // spot price after token out by token in =
+    //     - (Bi * Wo) / (Bo * (-1 + swap fee) * (Bi / (x + Bi - (x * swap fee))) ^ ((Wi + Wo) / Wo) * Wi)
+    // derivative of above =
+    //     (Wi + Wo) * (Bi / (Bi - (x * swap fee) + x)) ^ -(Wi / Wo) / (Bo * Wi)
+
     const inPoolAsset = this.getPoolAsset(tokenIn.denom);
     const outPoolAsset = this.getPoolAsset(tokenOutDenom);
+
+    const temp = WeightedPoolMath.pow(
+      inPoolAsset.amount
+        .toDec()
+        .quo(
+          inPoolAsset.amount
+            .toDec()
+            .sub(tokenIn.amount.toDec().mul(this.swapFee))
+            .add(tokenIn.amount.toDec())
+        ),
+      inPoolAsset.weight.toDec().quo(outPoolAsset.weight.toDec()).neg()
+    );
 
     return inPoolAsset.weight
       .add(outPoolAsset.weight)
       .toDec()
-      .quo(
-        outPoolAsset.amount
-          .toDec()
-          .mul(
-            WeightedPoolMath.pow(
-              inPoolAsset.amount
-                .toDec()
-                .quo(
-                  tokenIn.amount
-                    .toDec()
-                    .add(inPoolAsset.amount.toDec())
-                    .sub(inPoolAsset.amount.toDec().mul(this.swapFee))
-                ),
-              inPoolAsset.weight.toDec().quo(outPoolAsset.weight.toDec())
-            )
-          )
-          .mul(inPoolAsset.weight.toDec())
-      );
+      .mul(temp)
+      .quo(outPoolAsset.amount.toDec().mul(inPoolAsset.weight.toDec()));
   }
 
   protected static applyWeightedPoolRawPoolAssetChanges(
