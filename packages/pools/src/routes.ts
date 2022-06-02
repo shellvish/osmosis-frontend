@@ -521,10 +521,12 @@ export class OptimizedRoutes {
       const pool = route.pools[i];
       const tokenOutDenom = route.tokenOutDenoms[i];
       const tokenOut = pool.getTokenOutByTokenIn(tokenIns[i], tokenOutDenom);
-      tokenIns.push({
-        denom: tokenOutDenom,
-        amount: tokenOut.amount,
-      });
+      if (i !== route.pools.length - 1) {
+        tokenIns.push({
+          denom: tokenOutDenom,
+          amount: tokenOut.amount,
+        });
+      }
       spotPrices.push(
         tokenOut.afterPool.getSpotPriceInOverOut(
           tokenIns[i].denom,
