@@ -239,6 +239,10 @@ export class WeightedPoolMath {
   }
 
   protected static powInt(base: Dec, power: Int): Dec {
+    if (power.isNegative()) {
+      return new Dec(1).quo(WeightedPoolMath.powInt(base, power.neg()));
+    }
+
     if (power.equals(WeightedPoolMath.zeroInt)) {
       return WeightedPoolMath.oneDec;
     }

@@ -6,13 +6,47 @@ const powPrecision = new Dec("0.00000001");
 
 describe("Test osmosis math", () => {
   test("Test pow", () => {
-    const s = WeightedPoolMath.pow(new Dec("1.68"), new Dec("0.32"));
-    const expected = new Dec("1.18058965");
-    assert.strictEqual(
-      expected.sub(s).abs().lte(powPrecision),
-      true,
-      "expected value & actual value's difference should less than precision"
-    );
+    const tests: {
+      base: Dec;
+      exp: Dec;
+      expect: Dec;
+    }[] = [
+      {
+        base: new Dec("1.68"),
+        exp: new Dec("0.32"),
+        expect: new Dec("1.18058965"),
+      },
+      {
+        base: new Dec("1.68"),
+        exp: new Dec("-0.32"),
+        expect: new Dec("0.84703436"),
+      },
+      {
+        base: new Dec("0.909090"),
+        exp: new Dec("4"),
+        expect: new Dec("0.68301072"),
+      },
+      {
+        base: new Dec("0.909090"),
+        exp: new Dec("4.5"),
+        expect: new Dec("0.65122484"),
+      },
+      {
+        base: new Dec("0.909090"),
+        exp: new Dec("-4.5"),
+        expect: new Dec("1.53556794"),
+      },
+      {
+        base: new Dec("0.909090"),
+        exp: new Dec("-4"),
+        expect: new Dec("1.46410585"),
+      },
+    ];
+
+    for (const test of tests) {
+      const r = WeightedPoolMath.pow(test.base, test.exp);
+      expect(test.expect.sub(r).abs().lte(powPrecision)).toBe(true);
+    }
   });
 
   test("Test calcSpotPrice", () => {

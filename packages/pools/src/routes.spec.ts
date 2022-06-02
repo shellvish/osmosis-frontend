@@ -97,6 +97,83 @@ describe("Test swap router", () => {
     return new OptimizedRoutes(pools);
   };
 
+  test("test weighted pool's derivative of after spot price", () => {
+    const pool1 = new WeightedPool(
+      createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(100),
+          denom: "uosmo",
+          amount: new Int("100"),
+        },
+        {
+          weight: new Int(500),
+          denom: "uion",
+          amount: new Dec("100").mul(new Dec(5)).quo(new Dec(16)).truncate(),
+        },
+      ])
+    );
+
+    const dSP1 = pool1.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+      {
+        denom: "uosmo",
+        amount: new Int(10),
+      },
+      "uion"
+    );
+
+    expect(dSP1.sub(new Dec(0.197273)).abs().lte(new Dec(0.00001))).toBe(true);
+
+    const pool2 = new WeightedPool(
+      createMockWeightedPoolRaw("1", new Dec(0.05), new Dec(0), [
+        {
+          weight: new Int(100),
+          denom: "uosmo",
+          amount: new Int("100"),
+        },
+        {
+          weight: new Int(500),
+          denom: "uion",
+          amount: new Dec("100").mul(new Dec(5)).quo(new Dec(16)).truncate(),
+        },
+      ])
+    );
+
+    const dSP2 = pool2.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+      {
+        denom: "uosmo",
+        amount: new Int(10),
+      },
+      "uion"
+    );
+
+    expect(dSP2.sub(new Dec(0.197093)).abs().lte(new Dec(0.00001))).toBe(true);
+
+    const pool3 = new WeightedPool(
+      createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(400),
+          denom: "uosmo",
+          amount: new Int("100"),
+        },
+        {
+          weight: new Int(100),
+          denom: "uion",
+          amount: new Dec("100").quo(new Dec(32)).truncate(),
+        },
+      ])
+    );
+
+    const dSP3 = pool3.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+      {
+        denom: "uosmo",
+        amount: new Int(10),
+      },
+      "uion"
+    );
+
+    expect(dSP3.sub(new Dec(0.610041)).abs().lte(new Dec(0.00001))).toBe(true);
+  });
+
   test("test swap router to be able to calculate best route with the most out token", () => {
     const router = createRouter1();
 
