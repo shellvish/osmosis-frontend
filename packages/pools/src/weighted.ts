@@ -314,6 +314,9 @@ export class WeightedPool implements Pool {
     raw: WeightedPoolRaw,
     changes: Coin[]
   ): WeightedPool {
+    // Deep copy
+    raw = JSON.parse(JSON.stringify(raw));
+
     const poolAssets = raw.poolAssets as {
       // Int
       weight: string;
@@ -348,9 +351,6 @@ export class WeightedPool implements Pool {
       throw new Error("There are remaining changes");
     }
 
-    return new WeightedPool({
-      ...raw,
-      poolAssets,
-    });
+    return new WeightedPool(raw);
   }
 }
