@@ -40,63 +40,6 @@ const createMockWeightedPoolRaw = (
 };
 
 describe("Test swap router", () => {
-  // When swapping pool 1 with osmo->ion, the spot price is advantageous, but the slippage is large.
-  // When swapping pool 2 with osmo->ion, the spot price is disadvantageous, but the slippage is small.
-  // Therefore, if the amount increases when swapping, you should eventually mix 1 and 2.
-  const createRouter1 = () => {
-    const pools = [
-      new WeightedPool(
-        createMockWeightedPoolRaw("1", new Dec(0.01), new Dec(0), [
-          {
-            weight: new Int(105),
-            denom: "uosmo",
-            amount: new Int("1000000000"),
-          },
-          {
-            weight: new Int(100),
-            denom: "uion",
-            amount: new Int("1000000000"),
-          },
-        ])
-      ),
-      new WeightedPool(
-        createMockWeightedPoolRaw("2", new Dec(0.01), new Dec(0), [
-          {
-            weight: new Int(100),
-            denom: "uosmo",
-            amount: new Int("100000000000"),
-          },
-          {
-            weight: new Int(100),
-            denom: "uion",
-            amount: new Int("100000000000"),
-          },
-          {
-            weight: new Int(50),
-            denom: "uatom",
-            amount: new Int("100000000000"),
-          },
-        ])
-      ),
-      new WeightedPool(
-        createMockWeightedPoolRaw("3", new Dec(0.01), new Dec(0), [
-          {
-            weight: new Int(100),
-            denom: "uatom",
-            amount: new Int("100000000"),
-          },
-          {
-            weight: new Int(10),
-            denom: "uluna",
-            amount: new Int("1000000000000000000000000000000000"),
-          },
-        ])
-      ),
-    ];
-
-    return new OptimizedRoutes(pools);
-  };
-
   test("test weighted pool's derivative of after spot price", () => {
     const pool1 = new WeightedPool(
       createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
@@ -175,7 +118,38 @@ describe("Test swap router", () => {
   });
 
   test("test swap router to be able to calculate best route with the most out token", () => {
-    const router = createRouter1();
+    // When swapping pool 1 with osmo->ion, the spot price is advantageous, but the slippage is large.
+    // When swapping pool 2 with osmo->ion, the spot price is disadvantageous, but the slippage is small.
+    const router = new OptimizedRoutes([
+      new WeightedPool(
+        createMockWeightedPoolRaw("1", new Dec(0.01), new Dec(0), [
+          {
+            weight: new Int(105),
+            denom: "uosmo",
+            amount: new Int("1000000000"),
+          },
+          {
+            weight: new Int(100),
+            denom: "uion",
+            amount: new Int("1000000000"),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("2", new Dec(0.01), new Dec(0), [
+          {
+            weight: new Int(100),
+            denom: "uosmo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(100),
+            denom: "uion",
+            amount: new Int("100000000000"),
+          },
+        ])
+      ),
+    ]);
 
     let bestRoute = router.getBestRouteByTokenIn(
       {
@@ -202,5 +176,102 @@ describe("Test swap router", () => {
     // Pool2 is advantageous because the amount of token in is large.
     expect(bestRoute.pools.length).toBe(1);
     expect(bestRoute.pools[0].id).toBe("2");
+  });
+
+  test("test swap router to be able to calculate better swap by token in with mixed routes", () => {
+    // When swapping pool 1 with osmo->ion, the spot price is advantageous, but the slippage is large.
+    // When swapping pool 2 with osmo->ion, the spot price is disadvantageous, but the slippage is small.
+    // Therefore, if the amount increases when swapping, you should eventually mix 1 and 2.
+    // The after spot price that meets each other exists around 20000000000.
+    const router = new OptimizedRoutes([
+      new WeightedPool(
+        createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+          {
+            weight: new Int(400),
+            denom: "uosmo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(100),
+            denom: "uion",
+            amount: new Dec("100000000000").quo(new Dec(32)).truncate(),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("2", new Dec(0), new Dec(0), [
+          {
+            weight: new Int(100),
+            denom: "uosmo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(500),
+            denom: "uion",
+            amount: new Dec("100000000000")
+              .mul(new Dec(5))
+              .quo(new Dec(16))
+              .truncate(),
+          },
+        ])
+      ),
+    ]);
+
+    const sp1 = router.pools[0].getSpotPriceInOverOut("uosmo", "uion");
+    const sp2 = router.pools[1].getSpotPriceInOverOut("uosmo", "uion");
+
+    // Definitely, for testing, pool1's spot price should be more advantageous than pool2.
+    expect(sp1.lt(sp2)).toBeTruthy();
+
+    const tokenIn = {
+      denom: "uosmo",
+      amount: new Int("25000000000"),
+    };
+
+    const afterSP1 = router.pools[0]
+      .getTokenOutByTokenIn(tokenIn, "uion")
+      .afterPool.getSpotPriceInOverOut("uosmo", "uion");
+    const afterSP2 = router.pools[1]
+      .getTokenOutByTokenIn(tokenIn, "uion")
+      .afterPool.getSpotPriceInOverOut("uosmo", "uion");
+
+    // For testing, after spot price should be
+    expect(afterSP1.gt(afterSP2)).toBeTruthy();
+
+    const routes = router.getOptimizedRoutesByTokenIn(tokenIn, "uion", 3, 10);
+
+    expect(routes.length).toBe(2);
+
+    const optimizedTokenOut =
+      OptimizedRoutes.calculateTokenOutByTokenIn(routes);
+    const tokenOut1 = OptimizedRoutes.calculateTokenOutByTokenIn([
+      {
+        pools: [router.pools[0]],
+        tokenInDenom: tokenIn.denom,
+        tokenOutDenoms: ["uion"],
+        amount: tokenIn.amount,
+      },
+    ]);
+    const tokenOut2 = OptimizedRoutes.calculateTokenOutByTokenIn([
+      {
+        pools: [router.pools[1]],
+        tokenInDenom: tokenIn.denom,
+        tokenOutDenoms: ["uion"],
+        amount: tokenIn.amount,
+      },
+    ]);
+
+    expect(optimizedTokenOut.amount.gt(tokenOut1.amount)).toBeTruthy();
+    expect(optimizedTokenOut.amount.gt(tokenOut2.amount)).toBeTruthy();
+
+    // TODO: Fix below. Currently, the approximation does not converge.
+    // const pool1TokenInAmount = routes.find(
+    //   (r) => r.pools[0].id === "1"
+    // )!.amount;
+    // const pool2TokenInAmount = routes.find(
+    //   (r) => r.pools[0].id === "2"
+    // )!.amount;
+    // // If you draw the graph roughly, you can see that it is advantageous to put more amount in pool1.
+    // expect(pool1TokenInAmount.gt(pool2TokenInAmount)).toBeTruthy();
   });
 });
