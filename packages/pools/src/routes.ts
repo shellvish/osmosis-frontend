@@ -384,7 +384,8 @@ export class OptimizedRoutes {
       totalTokenInAmount = totalTokenInAmount.add(route.amount);
     }
 
-    let tokenInAmounts = routes.map((route) => route.amount);
+    // Swallow copy
+    routes = routes.slice();
 
     for (let i = 0; i < iterations; i++) {
       const spotPricesAfterSwap: Dec[] = [];
@@ -416,7 +417,7 @@ export class OptimizedRoutes {
         sumInverseDerivativeSPaSs
       );
 
-      const newTokenInAmounts: Int[] = tokenInAmounts.slice();
+      const newTokenInAmounts: Int[] = routes.map((r) => r.amount);
       let breakIteration = false;
 
       for (let j = 0; j < routes.length; j++) {
@@ -437,7 +438,7 @@ export class OptimizedRoutes {
             return totalTokenInAmount.sub(sub);
           }
 
-          return tokenInAmounts[j].add(
+          return route.amount.add(
             targetSpotPriceInOverOut
               .sub(spotPricesAfterSwap[j])
               .quo(derivativeSPaSs[j])
@@ -465,15 +466,15 @@ export class OptimizedRoutes {
       if (breakIteration) {
         break;
       }
-      tokenInAmounts = newTokenInAmounts;
+      routes = routes.map((route, i) => {
+        return {
+          ...route,
+          amount: newTokenInAmounts[i],
+        };
+      });
     }
 
-    return routes.map((route, i) => {
-      return {
-        ...route,
-        amount: tokenInAmounts[i],
-      };
-    });
+    return routes;
   }
 
   protected static calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
