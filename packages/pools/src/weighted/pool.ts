@@ -1,57 +1,8 @@
-import { Pool } from "./interface";
+import { Pool } from "../interface";
 import { Coin, Dec, Int } from "@keplr-wallet/unit";
-import { WeightedPoolMath } from "@osmosis-labs/math";
-
-export interface WeightedPoolRaw {
-  readonly id: string;
-  readonly poolParams: {
-    readonly lock: boolean;
-    // Dec
-    readonly swapFee: string;
-    // Dec
-    readonly exitFee: string;
-    readonly smoothWeightChangeParams: {
-      // Timestamp
-      readonly start_time: string;
-      // Seconds with s suffix. Ex) 3600s
-      readonly duration: string;
-      readonly initialPoolWeights: ReadonlyArray<{
-        readonly token: {
-          readonly denom: string;
-          // Int
-          readonly amount: string;
-        };
-        // Int
-        readonly weight: string;
-      }>;
-      readonly targetPoolWeights: ReadonlyArray<{
-        readonly token: {
-          readonly denom: string;
-          // Int
-          readonly amount: string;
-        };
-        // Int
-        readonly weight: string;
-      }>;
-    } | null;
-  };
-  // Int
-  readonly totalWeight: string;
-  readonly totalShares: {
-    readonly denom: string;
-    // Int
-    readonly amount: string;
-  };
-  readonly poolAssets: ReadonlyArray<{
-    // Int
-    readonly weight: string;
-    readonly token: {
-      readonly denom: string;
-      // Int
-      readonly amount: string;
-    };
-  }>;
-}
+import { WeightedPoolMath } from "./math";
+import { WeightedPoolRaw } from "./types";
+import { pow } from "../math";
 
 export class WeightedPool implements Pool {
   constructor(public readonly raw: WeightedPoolRaw) {}
@@ -291,7 +242,7 @@ export class WeightedPool implements Pool {
     const inPoolAsset = this.getPoolAsset(tokenIn.denom);
     const outPoolAsset = this.getPoolAsset(tokenOutDenom);
 
-    const temp = WeightedPoolMath.pow(
+    const temp = pow(
       inPoolAsset.amount
         .toDec()
         .quo(

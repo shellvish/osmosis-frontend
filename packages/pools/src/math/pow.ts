@@ -1,7 +1,18 @@
 import { Dec, Int } from "@keplr-wallet/unit";
 
+const zeroInt = new Int(0);
+const twoInt = new Int(2);
+const oneDec = new Dec(1);
 const powPrecision = new Dec("0.00000001");
 
+/**
+ * Calculate the rational square of a rational number using a binomial series.
+ *
+ * TODO: Rename the function. The name `pow` doesn't imply at all that this uses a binomial series,
+ *       and can't let the developer know that only base greater than 0 and less than 2 is allowed.
+ * @param base
+ * @param exp
+ */
 export function pow(base: Dec, exp: Dec): Dec {
   // Exponentiation of a negative base with an arbitrary real exponent is not closed within the reals.
   // You can see this by recalling that `i = (-1)^(.5)`. We have to go to complex numbers to define this.
@@ -33,7 +44,28 @@ export function pow(base: Dec, exp: Dec): Dec {
   return integerPow.mul(fractionalPow);
 }
 
-export function absDifferenceWithSign(a: Dec, b: Dec): [Dec, boolean] {
+function powInt(base: Dec, power: Int): Dec {
+  if (power.isNegative()) {
+    return new Dec(1).quo(powInt(base, power.neg()));
+  }
+
+  if (power.equals(zeroInt)) {
+    return oneDec;
+  }
+  let tmp = oneDec;
+
+  for (let i = power; i.gt(new Int(1)); ) {
+    if (!i.mod(twoInt).equals(zeroInt)) {
+      tmp = tmp.mul(base);
+    }
+    i = i.div(twoInt);
+    base = base.mul(base);
+  }
+
+  return base.mul(tmp);
+}
+
+function absDifferenceWithSign(a: Dec, b: Dec): [Dec, boolean] {
   if (a.gte(b)) {
     return [a.sub(b), false];
   } else {
@@ -41,21 +73,21 @@ export function absDifferenceWithSign(a: Dec, b: Dec): [Dec, boolean] {
   }
 }
 
-export function powApprox(base: Dec, exp: Dec, precision: Dec): Dec {
+function powApprox(base: Dec, exp: Dec, precision: Dec): Dec {
   if (exp.isZero()) {
     return new Dec(0);
   }
 
   const a = exp;
-  const [x, xneg] = absDifferenceWithSign(base, new Dec(1));
-  let term = new Dec(1);
-  let sum = new Dec(1);
+  const [x, xneg] = absDifferenceWithSign(base, oneDec);
+  let term = oneDec;
+  let sum = oneDec;
   let negative = false;
 
   // TODO: Document this computation via taylor expansion
   for (let i = 1; term.gte(precision); i++) {
-    const bigK = new Dec(1).mul(new Dec(i.toString()));
-    const [c, cneg] = absDifferenceWithSign(a, bigK.sub(new Dec(1)));
+    const bigK = oneDec.mul(new Dec(i.toString()));
+    const [c, cneg] = absDifferenceWithSign(a, bigK.sub(oneDec));
     term = term.mul(c.mul(x));
     term = term.quo(bigK);
 
@@ -77,21 +109,4 @@ export function powApprox(base: Dec, exp: Dec, precision: Dec): Dec {
     }
   }
   return sum;
-}
-
-function powInt(base: Dec, power: Int): Dec {
-  if (power.equals(new Int(0))) {
-    return new Dec(1);
-  }
-  let tmp = new Dec(1);
-
-  for (let i = power; i.gt(new Int(1)); ) {
-    if (!i.mod(new Int(2)).equals(new Int(0))) {
-      tmp = tmp.mul(base);
-    }
-    i = i.div(new Int(2));
-    base = base.mul(base);
-  }
-
-  return base.mul(tmp);
 }
