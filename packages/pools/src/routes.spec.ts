@@ -343,6 +343,203 @@ describe("Test swap router", () => {
     expect(routes[1].amount.toString()).toBe("38");
   });
 
+  test("test approximateOptimizedRoutesByTokenIn's assertion", () => {
+    const pool1 = new WeightedPool(
+      createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(400),
+          denom: "uosmo",
+          amount: new Int("100000000000"),
+        },
+        {
+          weight: new Int(400),
+          denom: "uatom",
+          amount: new Int("100000000000"),
+        },
+        {
+          weight: new Int(100),
+          denom: "uion",
+          amount: new Dec("100000000000").quo(new Dec(32)).truncate(),
+        },
+      ])
+    );
+    const pool2 = new WeightedPool(
+      createMockWeightedPoolRaw("2", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(100),
+          denom: "uosmo",
+          amount: new Int("100000000000"),
+        },
+        {
+          weight: new Int(500),
+          denom: "uion",
+          amount: new Dec("100000000000")
+            .mul(new Dec(5))
+            .quo(new Dec(16))
+            .truncate(),
+        },
+        {
+          weight: new Int(400),
+          denom: "ufoo",
+          amount: new Int("100000000000"),
+        },
+      ])
+    );
+
+    expect(() => {
+      // Empty routes is allowed
+      const r = OptimizedRoutes.approximateOptimizedRoutesByTokenIn([], 10);
+      expect(r.length).toBe(0);
+    }).not.toThrow();
+
+    expect(() => {
+      // Success case
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).not.toThrow();
+
+    expect(() => {
+      // Should be rejected if pool is duplicated
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+
+    expect(() => {
+      // Should be rejected if token in is empty
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+
+    expect(() => {
+      // Should be rejected if token out is empty
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: [],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+
+    expect(() => {
+      // Should be rejected if token out is empty
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: [""],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+
+    expect(() => {
+      // Should be rejected if token in is different per route
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uatom",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+
+    expect(() => {
+      // Should be rejected if token out is different per route
+      OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
+        [
+          {
+            pools: [pool1],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["uion"],
+            amount: new Int(1000000),
+          },
+          {
+            pools: [pool2],
+            tokenInDenom: "uosmo",
+            tokenOutDenoms: ["ufoo"],
+            amount: new Int(1000000),
+          },
+        ],
+        10
+      );
+    }).toThrow();
+  });
+
   test("test approximateOptimizedRoutesByTokenIn able to find converging spot price", () => {
     // When swapping pool 1 with osmo->ion, the spot price is advantageous, but the slippage is large.
     // When swapping pool 2 with osmo->ion, the spot price is disadvantageous, but the slippage is small.
