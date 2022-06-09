@@ -232,6 +232,21 @@ export class OptimizedRoutes {
       }
     }
 
+    multihopCandiateHasOnlyInIntermediates.forEach((inPools, denom) => {
+      const outPools = multihopCandiateHasOnlyOutIntermediates.get(denom);
+      if (outPools && outPools.length > 0) {
+        for (const inPool of inPools) {
+          for (const outPool of outPools) {
+            filteredRouteRoutes.push({
+              pools: [inPool, outPool],
+              tokenInDenom: tokenInDenom,
+              tokenOutDenoms: [denom, tokenOutDenom],
+            });
+          }
+        }
+      }
+    });
+
     this.candidateRoutesCache.set(cacheKey, filteredRouteRoutes);
 
     return OptimizedRoutes.unwrapCachedPoolRoutes(filteredRouteRoutes);
