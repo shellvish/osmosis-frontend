@@ -1,6 +1,6 @@
 import { WeightedPool, WeightedPoolRaw } from "./weighted";
 import { Dec, Int } from "@keplr-wallet/unit";
-import { OptimizedRoutes } from "./routes";
+import { OptimizedRoutes, RouteWithAmount } from "./routes";
 
 const createMockWeightedPoolRaw = (
   id: string,
@@ -38,6 +38,21 @@ const createMockWeightedPoolRaw = (
     totalWeight: totalWeight.toString(),
   };
 };
+
+/**
+ * Used for testing protected and private methods.
+ *
+ * This class has direct relationships with protected, private methods, all methods should be tested thoroughly.
+ */
+class TestingOptimizedRoutes extends OptimizedRoutes {
+  static calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+    route: RouteWithAmount
+  ): Dec {
+    return OptimizedRoutes.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+      route
+    );
+  }
+}
 
 describe("Test swap router", () => {
   test("test weighted pool's derivative of after spot price", () => {
@@ -115,6 +130,194 @@ describe("Test swap router", () => {
     );
 
     expect(dSP3.sub(new Dec(0.610041)).abs().lte(new Dec(0.00001))).toBe(true);
+  });
+
+  test("test multihop weighted pool's derivative of after spot price", () => {
+    const pool1 = new WeightedPool(
+      createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(100),
+          denom: "uosmo",
+          amount: new Int("1000"),
+        },
+        {
+          weight: new Int(500),
+          denom: "ufoo",
+          amount: new Dec("1000").mul(new Dec(5)).quo(new Dec(16)).truncate(),
+        },
+      ])
+    );
+    const sp1 = pool1.getSpotPriceInOverOut("uosmo", "ufoo");
+    expect(sp1.sub(new Dec(16.02564)).abs().lte(new Dec(0.00001))).toBe(true);
+    const tokenOut1 = pool1.getTokenOutByTokenIn(
+      {
+        denom: "uosmo",
+        amount: new Int(100),
+      },
+      "ufoo"
+    ).amount;
+    expect(tokenOut1.toString()).toBe("5");
+    const spotPriceAfterSwap1 = pool1
+      .getTokenOutByTokenIn(
+        {
+          denom: "uosmo",
+          amount: new Int(100),
+        },
+        "ufoo"
+      )
+      .afterPool.getSpotPriceInOverOut("uosmo", "ufoo");
+    expect(
+      spotPriceAfterSwap1.sub(new Dec(17.9153)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+    const dSpotPriceAfterSwap1 =
+      pool1.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+        {
+          denom: "uosmo",
+          amount: new Int(100),
+        },
+        "ufoo"
+      );
+    expect(
+      dSpotPriceAfterSwap1.sub(new Dec(0.0196)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+
+    const pool2 = new WeightedPool(
+      createMockWeightedPoolRaw("2", new Dec(0.05), new Dec(0), [
+        {
+          weight: new Int(100),
+          denom: "ufoo",
+          amount: new Int("100"),
+        },
+        {
+          weight: new Int(500),
+          denom: "ubar",
+          amount: new Int("1000"),
+        },
+      ])
+    );
+    const sp2 = pool2.getSpotPriceInOverOut("ufoo", "ubar");
+    expect(sp2.sub(new Dec(0.52631)).abs().lte(new Dec(0.00001))).toBe(true);
+    const tokenOut2 = pool2.getTokenOutByTokenIn(
+      {
+        denom: "ufoo",
+        amount: new Int(5),
+      },
+      "ubar"
+    ).amount;
+    expect(tokenOut2.toString()).toBe("9");
+    const spotPriceAfterSwap2 = pool2
+      .getTokenOutByTokenIn(
+        {
+          denom: "ufoo",
+          amount: new Int(5),
+        },
+        "ubar"
+      )
+      .afterPool.getSpotPriceInOverOut("ufoo", "ubar");
+    expect(
+      spotPriceAfterSwap2.sub(new Dec(0.55765)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+    const dSpotPriceAfterSwap2 =
+      pool2.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+        {
+          denom: "ufoo",
+          amount: new Int(5),
+        },
+        "ubar"
+      );
+    expect(
+      dSpotPriceAfterSwap2.sub(new Dec(0.00605)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+
+    const pool3 = new WeightedPool(
+      createMockWeightedPoolRaw("3", new Dec(0), new Dec(0), [
+        {
+          weight: new Int(50),
+          denom: "ubar",
+          amount: new Int("5000"),
+        },
+        {
+          weight: new Int(60),
+          denom: "ubaz",
+          amount: new Int("4400"),
+        },
+      ])
+    );
+    const sp3 = pool3.getSpotPriceInOverOut("ubar", "ubaz");
+    expect(sp3.sub(new Dec(1.36363)).abs().lte(new Dec(0.00001))).toBe(true);
+    const tokenOut3 = pool3.getTokenOutByTokenIn(
+      {
+        denom: "ubar",
+        amount: new Int(9),
+      },
+      "ubaz"
+    ).amount;
+    expect(tokenOut3.toString()).toBe("6");
+    const spotPriceAfterSwap3 = pool3
+      .getTokenOutByTokenIn(
+        {
+          denom: "ubar",
+          amount: new Int(9),
+        },
+        "ubaz"
+      )
+      .afterPool.getSpotPriceInOverOut("ubar", "ubaz");
+    expect(
+      spotPriceAfterSwap3.sub(new Dec(1.36795)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+    const dSpotPriceAfterSwap3 =
+      pool3.getDerivativeSpotPriceAfterTokenOutByTokenIn(
+        {
+          denom: "ubar",
+          amount: new Int(9),
+        },
+        "ubaz"
+      );
+    expect(
+      dSpotPriceAfterSwap3.sub(new Dec(0.0005)).abs().lte(new Dec(0.00001))
+    ).toBe(true);
+
+    const multihopDSPaS12 =
+      TestingOptimizedRoutes.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+        {
+          pools: [pool1, pool2],
+          tokenInDenom: "uosmo",
+          tokenOutDenoms: ["ufoo", "ubar"],
+          amount: new Int(100),
+        }
+      );
+
+    // SPaS'(x) = SPaS1'(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS2'(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS3'(TokenOut2(TokenOut1(x))) ...
+    expect(
+      multihopDSPaS12.equals(
+        dSpotPriceAfterSwap1.mul(spotPriceAfterSwap2).add(dSpotPriceAfterSwap2)
+      )
+    ).toBe(true);
+
+    const multihopDSPaS123 =
+      TestingOptimizedRoutes.calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
+        {
+          pools: [pool1, pool2, pool3],
+          tokenInDenom: "uosmo",
+          tokenOutDenoms: ["ufoo", "ubar", "ubaz"],
+          amount: new Int(100),
+        }
+      );
+
+    // SPaS'(x) = SPaS1'(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS2'(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x)))
+    //            + SPaS3'(TokenOut2(TokenOut1(x))) ...
+    expect(
+      multihopDSPaS123.equals(
+        dSpotPriceAfterSwap1
+          .mul(spotPriceAfterSwap2)
+          .mul(spotPriceAfterSwap3)
+          .add(dSpotPriceAfterSwap2.mul(spotPriceAfterSwap3))
+          .add(dSpotPriceAfterSwap3)
+      )
+    ).toBe(true);
   });
 
   test("test swap router to be able to calculate best route with the most out token", () => {
