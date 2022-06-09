@@ -7,13 +7,10 @@ const powPrecision = new Dec("0.00000001");
 
 /**
  * Calculate the rational square of a rational number using a binomial series.
- *
- * TODO: Rename the function. The name `pow` doesn't imply at all that this uses a binomial series,
- *       and can't let the developer know that only base greater than 0 and less than 2 is allowed.
- * @param base
+ * @param base base should be greater than 0 and less than 2.
  * @param exp
  */
-export function pow(base: Dec, exp: Dec): Dec {
+export function powWithBinomialSeries(base: Dec, exp: Dec): Dec {
   // Exponentiation of a negative base with an arbitrary real exponent is not closed within the reals.
   // You can see this by recalling that `i = (-1)^(.5)`. We have to go to complex numbers to define this.
   // (And would have to implement complex logarithms)
@@ -39,7 +36,11 @@ export function pow(base: Dec, exp: Dec): Dec {
     return integerPow;
   }
 
-  const fractionalPow = powApprox(base, fractional, powPrecision);
+  const fractionalPow = powFractionalWithBinomialSeries(
+    base,
+    fractional,
+    powPrecision
+  );
 
   return integerPow.mul(fractionalPow);
 }
@@ -73,7 +74,11 @@ function absDifferenceWithSign(a: Dec, b: Dec): [Dec, boolean] {
   }
 }
 
-function powApprox(base: Dec, exp: Dec, precision: Dec): Dec {
+function powFractionalWithBinomialSeries(
+  base: Dec,
+  exp: Dec,
+  precision: Dec
+): Dec {
   if (exp.isZero()) {
     return new Dec(0);
   }

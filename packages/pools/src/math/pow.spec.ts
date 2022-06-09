@@ -1,10 +1,10 @@
 import { Dec } from "@keplr-wallet/unit";
-import { pow } from "./pow";
+import { powWithBinomialSeries } from "./pow";
 
 const powPrecision = new Dec("0.00000001");
 
 describe("Test common math", () => {
-  test("Test pow", () => {
+  test("Test powWithBinomialSeries", () => {
     const tests: ({
       base: Dec;
       exp: Dec;
@@ -76,10 +76,10 @@ describe("Test common math", () => {
     for (const test of tests) {
       if (test.expectError) {
         expect(() => {
-          pow(test.base, test.exp);
+          powWithBinomialSeries(test.base, test.exp);
         }).toThrow();
       } else {
-        const r = pow(test.base, test.exp);
+        const r = powWithBinomialSeries(test.base, test.exp);
         expect(test.expect.sub(r).abs().lte(powPrecision)).toBe(true);
       }
     }

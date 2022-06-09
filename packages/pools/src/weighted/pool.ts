@@ -2,7 +2,7 @@ import { Pool } from "../interface";
 import { Coin, Dec, Int } from "@keplr-wallet/unit";
 import { WeightedPoolMath } from "./math";
 import { WeightedPoolRaw } from "./types";
-import { pow } from "../math";
+import { powWithBinomialSeries } from "../math";
 
 export class WeightedPool implements Pool {
   constructor(public readonly raw: WeightedPoolRaw) {}
@@ -242,7 +242,7 @@ export class WeightedPool implements Pool {
     const inPoolAsset = this.getPoolAsset(tokenIn.denom);
     const outPoolAsset = this.getPoolAsset(tokenOutDenom);
 
-    const temp = pow(
+    const temp = powWithBinomialSeries(
       inPoolAsset.amount
         .toDec()
         .quo(

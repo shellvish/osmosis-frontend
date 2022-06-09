@@ -1,5 +1,5 @@
 import { Dec } from "@keplr-wallet/unit";
-import { pow } from "../math";
+import { powWithBinomialSeries } from "../math";
 
 export class WeightedPoolMath {
   protected static oneDec = new Dec(1);
@@ -32,7 +32,7 @@ export class WeightedPoolMath {
     let adjustedIn = WeightedPoolMath.oneDec.sub(swapFee);
     adjustedIn = tokenAmountIn.mul(adjustedIn);
     const y = tokenBalanceIn.quo(tokenBalanceIn.add(adjustedIn));
-    const foo = pow(y, weightRatio);
+    const foo = powWithBinomialSeries(y, weightRatio);
     const bar = WeightedPoolMath.oneDec.sub(foo);
     return tokenBalanceOut.mul(bar);
   }
@@ -48,7 +48,7 @@ export class WeightedPoolMath {
     const weightRatio = tokenWeightOut.quo(tokenWeightIn);
     const diff = tokenBalanceOut.sub(tokenAmountOut);
     const y = tokenBalanceOut.quo(diff);
-    let foo = pow(y, weightRatio);
+    let foo = powWithBinomialSeries(y, weightRatio);
     foo = foo.sub(WeightedPoolMath.oneDec);
     const tokenAmountIn = WeightedPoolMath.oneDec.sub(swapFee);
     return tokenBalanceIn.mul(foo).quo(tokenAmountIn);
