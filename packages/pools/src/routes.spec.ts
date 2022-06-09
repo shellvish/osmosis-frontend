@@ -420,10 +420,10 @@ describe("Test swap router", () => {
         amount: new Int(100),
       },
     ]);
-    expect(tokenOutPool1.amount.equals(new Int(9))).toBeTruthy();
-    expect(
-      tokenOutPool1.afterSpotPriceInOverOut.equals(new Dec(12.5))
-    ).toBeTruthy();
+    expect(tokenOutPool1.amount.equals(new Int(9))).toBe(true);
+    expect(tokenOutPool1.afterSpotPriceInOverOut.equals(new Dec(12.5))).toBe(
+      true
+    );
     expect(
       pool1
         .getDerivativeSpotPriceAfterTokenOutByTokenIn(
@@ -436,7 +436,7 @@ describe("Test swap router", () => {
         .sub(new Dec("0.059036"))
         .abs()
         .lte(new Dec("0.000001"))
-    ).toBeTruthy();
+    ).toBe(true);
 
     const tokenOutPool2 = OptimizedRoutes.calculateTokenOutByTokenIn([
       {
@@ -446,13 +446,13 @@ describe("Test swap router", () => {
         amount: new Int(100),
       },
     ]);
-    expect(tokenOutPool2.amount.equals(new Int(5))).toBeTruthy();
+    expect(tokenOutPool2.amount.equals(new Int(5))).toBe(true);
     expect(
       tokenOutPool2.afterSpotPriceInOverOut
         .sub(new Dec("17.91530944"))
         .abs()
         .lte(new Dec("0.00001"))
-    ).toBeTruthy();
+    ).toBe(true);
     expect(
       pool2
         .getDerivativeSpotPriceAfterTokenOutByTokenIn(
@@ -465,7 +465,7 @@ describe("Test swap router", () => {
         .sub(new Dec("0.019600"))
         .abs()
         .lte(new Dec("0.000001"))
-    ).toBeTruthy();
+    ).toBe(true);
 
     // Execute one iteration
     let routes = OptimizedRoutes.approximateOptimizedRoutesByTokenIn(
@@ -832,14 +832,14 @@ describe("Test swap router", () => {
             ?.amount.sub(expectedTokenInPool1)
             .abs()
             .lte(new Int(10))
-        ).toBeTruthy();
+        ).toBe(true);
         expect(
           routes
             .find((r) => r.pools[0].id === "2")
             ?.amount.sub(expectedTokenInPool2)
             .abs()
             .lte(new Int(10))
-        ).toBeTruthy();
+        ).toBe(true);
       }
     }
     if (!expectedTokenInPool1 || !expectedTokenInPool2) {
@@ -890,7 +890,7 @@ describe("Test swap router", () => {
     const sp2 = router.pools[1].getSpotPriceInOverOut("uosmo", "uion");
 
     // Definitely, for testing, pool1's spot price should be more advantageous than pool2.
-    expect(sp1.lt(sp2)).toBeTruthy();
+    expect(sp1.lt(sp2)).toBe(true);
 
     const tokenIn = {
       denom: "uosmo",
@@ -905,7 +905,7 @@ describe("Test swap router", () => {
       .afterPool.getSpotPriceInOverOut("uosmo", "uion");
 
     // For testing, after spot price should be
-    expect(afterSP1.gt(afterSP2)).toBeTruthy();
+    expect(afterSP1.gt(afterSP2)).toBe(true);
 
     const routes = router.getOptimizedRoutesByTokenIn(tokenIn, "uion", 3, 30);
 
@@ -930,8 +930,8 @@ describe("Test swap router", () => {
       },
     ]);
 
-    expect(optimizedTokenOut.amount.gt(tokenOut1.amount)).toBeTruthy();
-    expect(optimizedTokenOut.amount.gt(tokenOut2.amount)).toBeTruthy();
+    expect(optimizedTokenOut.amount.gt(tokenOut1.amount)).toBe(true);
+    expect(optimizedTokenOut.amount.gt(tokenOut2.amount)).toBe(true);
 
     const pool1TokenInAmount = routes.find(
       (r) => r.pools[0].id === "1"
@@ -940,6 +940,6 @@ describe("Test swap router", () => {
       (r) => r.pools[0].id === "2"
     )!.amount;
     // If you draw the graph roughly, you can see that it is advantageous to put more amount in pool1.
-    expect(pool1TokenInAmount.gt(pool2TokenInAmount)).toBeTruthy();
+    expect(pool1TokenInAmount.gt(pool2TokenInAmount)).toBe(true);
   });
 });
