@@ -20,7 +20,7 @@ export class WeightedPoolMath {
     return number.quo(denom).mul(scale);
   }
 
-  public static calcOutGivenIn(
+  static calcOutGivenIn(
     tokenBalanceIn: Dec,
     tokenWeightIn: Dec,
     tokenBalanceOut: Dec,
@@ -37,7 +37,7 @@ export class WeightedPoolMath {
     return tokenBalanceOut.mul(bar);
   }
 
-  public static calcInGivenOut(
+  static calcInGivenOut(
     tokenBalanceIn: Dec,
     tokenWeightIn: Dec,
     tokenBalanceOut: Dec,
