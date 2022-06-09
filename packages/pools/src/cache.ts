@@ -8,13 +8,41 @@ import { SimpleLRUCache } from "./lru-cache";
  * by separating the actual logic and caching logic.
  */
 export class CachedPool implements Pool {
+  protected static SymbolCachedPool = Symbol("cachedPool");
+
   protected cache: SimpleLRUCache;
 
-  constructor(
-    public readonly pool: Pool,
+  protected constructor(
+    protected readonly pool: Pool,
     public readonly cacheMaxSize: number = 30
   ) {
     this.cache = new SimpleLRUCache(cacheMaxSize);
+  }
+
+  /**
+   * Returns the cached pool from pool.
+   * If the element of pools is instance of CachedPools, just use as it is.
+   * If the element of pools has `SymbolCachedPool` field, use that field.
+   * If not, create new CachedPool and set that to `SymbolCachedPool` field.
+   * @param pool
+   * @param cacheMaxSize
+   */
+  static wrap(pool: Pool, cacheMaxSize?: number): CachedPool {
+    if (pool instanceof CachedPool) {
+      return pool;
+    }
+
+    if ((pool as any)[CachedPool.SymbolCachedPool]) {
+      return (pool as any)[CachedPool.SymbolCachedPool] as CachedPool;
+    }
+
+    const cachedPool = new CachedPool(pool, cacheMaxSize);
+    (pool as any)[CachedPool.SymbolCachedPool] = cachedPool;
+    return cachedPool;
+  }
+
+  unwrap(): Pool {
+    return this.pool;
   }
 
   clearCache() {

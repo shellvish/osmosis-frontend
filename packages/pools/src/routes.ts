@@ -18,8 +18,6 @@ export interface RouteWithAmount extends Route {
 }
 
 export class OptimizedRoutes {
-  protected static SymbolCachedPool = Symbol("cachedPool");
-
   protected _pools: ReadonlyArray<Pool>;
   protected candidateRoutesCache = new Map<string, Route[]>();
 
@@ -759,10 +757,6 @@ export class OptimizedRoutes {
 
   /**
    * Returns the cached pools from pools.
-   * If the element of pools is instance of CachedPools, just use as it is.
-   * If the element of pools has `SymbolCachedPool` field, use that field.
-   * If not, create new CachedPool and set that to `SymbolCachedPool` field.
-   *
    *
    * `CachedPool` is used internally. Even if each method returns a `CachedPool`, it is safe in the `Pool` interface for the developers.
    * But they can't use `instanceof` or typecasting. Make sure to return unwrapped pools so that they don't have to care about type of `CachedPools`.
@@ -771,24 +765,14 @@ export class OptimizedRoutes {
    */
   static wrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
     return pools.map((pool) => {
-      if (pool instanceof CachedPool) {
-        return pool;
-      }
-
-      if ((pool as any)[OptimizedRoutes.SymbolCachedPool]) {
-        return (pool as any)[OptimizedRoutes.SymbolCachedPool] as Pool;
-      }
-
-      const cachedPool = new CachedPool(pool);
-      (pool as any)[OptimizedRoutes.SymbolCachedPool] = cachedPool;
-      return cachedPool;
+      return CachedPool.wrap(pool);
     });
   }
 
   static unwrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
     return pools.map((pool) => {
       if (pool instanceof CachedPool) {
-        return pool.pool;
+        return pool.unwrap();
       }
       return pool;
     });
