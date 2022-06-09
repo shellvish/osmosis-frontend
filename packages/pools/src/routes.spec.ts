@@ -942,4 +942,127 @@ describe("Test swap router", () => {
     // If you draw the graph roughly, you can see that it is advantageous to put more amount in pool1.
     expect(pool1TokenInAmount.gt(pool2TokenInAmount)).toBe(true);
   });
+
+  test("test swap router to be able to calculate better swap by token in with mixed and multihop routes", () => {
+    // When swapping pool (2,3) with osmo->ufoo->ion, the spot price is advantageous, but the slippage is large.
+    // When swapping pool 1 with osmo->ion, the spot price is disadvantageous, but the slippage is small.
+    // Therefore, if the amount increases when swapping, you should eventually mix 1 and (2,3).
+    // The after spot price that meets each other exists around 20000000000 roughly.
+    const router = new OptimizedRoutes([
+      new WeightedPool(
+        createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
+          {
+            weight: new Int(100),
+            denom: "uosmo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(500),
+            denom: "uion",
+            amount: new Dec("100000000000")
+              .mul(new Dec(5))
+              .quo(new Dec(16))
+              .truncate(),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("2", new Dec(0), new Dec(0), [
+          {
+            weight: new Int(200),
+            denom: "ufoo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(100),
+            denom: "uion",
+            amount: new Int("6250000000"),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("3", new Dec(0), new Dec(0), [
+          {
+            weight: new Int(100),
+            denom: "ufoo",
+            amount: new Int("100000000000"),
+          },
+          {
+            weight: new Int(100),
+            denom: "uosmo",
+            amount: new Int("100000000000"),
+          },
+        ])
+      ),
+    ]);
+
+    const sp1 = router.pools[0].getSpotPriceInOverOut("uosmo", "uion");
+    const sp2 = router.pools[2]
+      .getSpotPriceInOverOut("uosmo", "ufoo")
+      .mul(router.pools[1].getSpotPriceInOverOut("ufoo", "uion"));
+
+    // Definitely, for testing, pool1's spot price should be more disadvantageous than pool(2,3).
+    expect(sp1.gt(sp2)).toBe(true);
+
+    const tokenIn = {
+      denom: "uosmo",
+      amount: new Int("25000000000"),
+    };
+
+    const afterSP1 = router.pools[0]
+      .getTokenOutByTokenIn(tokenIn, "uion")
+      .afterPool.getSpotPriceInOverOut("uosmo", "uion");
+    const tokenOutPool3 = router.pools[2].getTokenOutByTokenIn(tokenIn, "ufoo");
+    const afterSP2 = tokenOutPool3.afterPool
+      .getSpotPriceInOverOut("uosmo", "ufoo")
+      .mul(
+        router.pools[1]
+          .getTokenOutByTokenIn(
+            {
+              denom: "ufoo",
+              amount: tokenOutPool3.amount,
+            },
+            "uion"
+          )
+          .afterPool.getSpotPriceInOverOut("ufoo", "uion")
+      );
+
+    // For testing, after spot price should be
+    expect(afterSP1.lt(afterSP2)).toBe(true);
+
+    const routes = router.getOptimizedRoutesByTokenIn(tokenIn, "uion", 3, 30);
+
+    expect(routes.length).toBe(2);
+
+    const optimizedTokenOut =
+      OptimizedRoutes.calculateTokenOutByTokenIn(routes);
+    const tokenOut1 = OptimizedRoutes.calculateTokenOutByTokenIn([
+      {
+        pools: [router.pools[0]],
+        tokenInDenom: tokenIn.denom,
+        tokenOutDenoms: ["uion"],
+        amount: tokenIn.amount,
+      },
+    ]);
+    const tokenOut2 = OptimizedRoutes.calculateTokenOutByTokenIn([
+      {
+        pools: [router.pools[2], router.pools[1]],
+        tokenInDenom: tokenIn.denom,
+        tokenOutDenoms: ["ufoo", "uion"],
+        amount: tokenIn.amount,
+      },
+    ]);
+
+    expect(optimizedTokenOut.amount.gt(tokenOut1.amount)).toBe(true);
+    expect(optimizedTokenOut.amount.gt(tokenOut2.amount)).toBe(true);
+
+    const pool1TokenInAmount = routes.find(
+      (r) => r.pools[0].id === "1"
+    )!.amount;
+    const pool2TokenInAmount = routes.find(
+      (r) => r.pools[0].id === "3" && r.pools[1].id === "2"
+    )!.amount;
+    // If you draw the graph roughly, you can see that it is advantageous to put more amount in multihop (pool3 -> pool2).
+    expect(pool1TokenInAmount.lt(pool2TokenInAmount)).toBe(true);
+  });
 });
