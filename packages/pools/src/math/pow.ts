@@ -80,7 +80,7 @@ function powFractionalWithBinomialSeries(
   precision: Dec
 ): Dec {
   if (exp.isZero()) {
-    return new Dec(0);
+    return oneDec;
   }
 
   const a = exp;
