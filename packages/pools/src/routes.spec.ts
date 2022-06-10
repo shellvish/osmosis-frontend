@@ -1,6 +1,7 @@
 import { WeightedPool, WeightedPoolRaw } from "./weighted";
 import { Dec, Int } from "@keplr-wallet/unit";
-import { OptimizedRoutes, RouteWithAmount } from "./routes";
+import { OptimizedRoutes } from "./routes";
+import { RouteWithAmount } from "./types";
 
 const createMockWeightedPoolRaw = (
   id: string,
