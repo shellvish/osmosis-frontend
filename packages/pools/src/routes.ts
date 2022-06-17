@@ -149,7 +149,6 @@ export class OptimizedRoutes {
    * @param tokenInDenom
    * @param tokenOutDenom
    * @param permitIntermediate Calculate until level 1 multihop if true
-   * @protected
    */
   getCandidateRoutes(
     tokenInDenom: string,
@@ -786,7 +785,6 @@ export class OptimizedRoutes {
    * `CachedPool` is used internally. Even if each method returns a `CachedPool`, it is safe in the `Pool` interface for the developers.
    * But they can't use `instanceof` or typecasting. Make sure to return unwrapped pools so that they don't have to care about type of `CachedPools`.
    * @param pools
-   * @protected
    */
   static wrapCachedPools(pools: ReadonlyArray<Pool>): ReadonlyArray<Pool> {
     return pools.map((pool) => {
