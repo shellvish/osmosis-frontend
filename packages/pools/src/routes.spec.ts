@@ -433,6 +433,8 @@ describe("Test swap router", () => {
     );
     // Routes with duplicate pools have to be removed, leaving only two.
     expect(routes.length).toBe(2);
+
+    // TODO: Add more cases...
   });
 
   test("test weighted pool's derivative of after spot price", () => {
@@ -1445,4 +1447,10 @@ describe("Test swap router", () => {
     // If you draw the graph roughly, you can see that it is advantageous to put more amount in multihop (pool3 -> pool2).
     expect(pool1TokenInAmount.lt(pool2TokenInAmount)).toBe(true);
   });
+
+  // TODO: Add case for testing the swap router to be able to calculate better swap by token in with three or more routes.
+
+  // TODO: Currently, the approximation test for routes optimization is only tested for manually determined case.
+  //       This approach is not intuitive and it is not easy to add more test cases.
+  //       Consider how to add randomized tests.
 });
