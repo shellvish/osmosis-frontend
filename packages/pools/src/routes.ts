@@ -72,6 +72,10 @@ export class OptimizedRoutes {
    * Returns routes sorted by the expected token out amount by descending order.
    * If the route which doesn't have enough assets (if first pool's limit amount is lesser than token in),
    * that route would be filtered.
+   *
+   * If duplicate pools exist in routes, generally methods will not work well.
+   * To make it easier to use, this method filters the routes so that no duplicate pools exist.
+   *
    * NOTE: SwapFee is considered.
    * @param tokenIn
    * @param tokenOutDenom
@@ -99,14 +103,19 @@ export class OptimizedRoutes {
       permitIntermediate
     );
 
+    // If duplicate pools exist in routes, generally methods will not work well.
+    // To make it easier to use, this method filters the routes so that no duplicate pools exist.
+    // After sorting, routes that already have a used pool are filtered.
+    const filterUsedPools: Map<string, boolean> = new Map();
+
     return OptimizedRoutes.unwrapCachedPoolRoutes(
       OptimizedRoutes.wrapCachedPoolRoutes(candidates)
-        .filter((pool) => {
-          if (pool.pools.length === 0) {
+        .filter((route) => {
+          if (route.pools.length === 0) {
             return false;
           }
 
-          if (pool.pools[0].getLimitAmount(tokenIn.denom).lt(tokenIn.amount)) {
+          if (route.pools[0].getLimitAmount(tokenIn.denom).lt(tokenIn.amount)) {
             return false;
           }
 
@@ -117,7 +126,7 @@ export class OptimizedRoutes {
             OptimizedRoutes.calculateTokenOutByTokenIn([
               {
                 amount: tokenIn.amount,
-                ...pool,
+                ...route,
               },
             ]);
             return true;
@@ -125,21 +134,43 @@ export class OptimizedRoutes {
             return false;
           }
         })
-        .sort((pool1, pool2) => {
+        .sort((route1, route2) => {
           const tokenOut1 = OptimizedRoutes.calculateTokenOutByTokenIn([
             {
               amount: tokenIn.amount,
-              ...pool1,
+              ...route1,
             },
           ]);
           const tokenOut2 = OptimizedRoutes.calculateTokenOutByTokenIn([
             {
               amount: tokenIn.amount,
-              ...pool2,
+              ...route2,
             },
           ]);
 
+          // If the amount of token out is the same, route rather than multihop takes precedence.
+          if (tokenOut1.amount.equals(tokenOut2.amount)) {
+            if (route1.pools.length === route2.pools.length) {
+              return 0;
+            }
+
+            return route1.pools.length < route2.pools.length ? -1 : 1;
+          }
+
           return tokenOut1.amount.gt(tokenOut2.amount) ? -1 : 1;
+        })
+        .filter((route) => {
+          for (const pool of route.pools) {
+            if (filterUsedPools.get(pool.id)) {
+              return false;
+            }
+          }
+
+          for (const pool of route.pools) {
+            filterUsedPools.set(pool.id, true);
+          }
+
+          return true;
         })
     );
   }

@@ -326,6 +326,115 @@ describe("Test swap router", () => {
     ).toBe(true);
   });
 
+  test("test getRoutesSortedByExpectedTokenOut", () => {
+    const router = new OptimizedRoutes([
+      new WeightedPool(
+        createMockWeightedPoolRaw("1", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ufoo",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubar",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100000000),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("2", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "uqux",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "ufred",
+            amount: new Int(100000000),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("3", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ubar",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100000000),
+          },
+          {
+            weight: new Int(100),
+            denom: "uqux",
+            amount: new Int(100000000),
+          },
+        ])
+      ),
+    ]);
+
+    // Shouldn't throw an error even if routes can't be found.
+    expect(
+      router.getRoutesSortedByExpectedTokenOut(
+        {
+          denom: "?",
+          amount: new Int(100),
+        },
+        "ufoo",
+        true
+      ).length
+    ).toBe(0);
+    // Shouldn't throw an error even if routes can't be found.
+    expect(
+      router.getRoutesSortedByExpectedTokenOut(
+        {
+          denom: "ufoo",
+          amount: new Int(100),
+        },
+        "?",
+        true
+      ).length
+    ).toBe(0);
+
+    // The amount of token in is very large and there will be no pool that can satisfy this amount.
+    // Even in this case it shouldn't throw an error.
+    expect(
+      router.getRoutesSortedByExpectedTokenOut(
+        {
+          denom: "ufoo",
+          amount: new Int("10000000000000"),
+        },
+        "ubar",
+        true
+      ).length
+    ).toBe(0);
+
+    const routes = router.getRoutesSortedByExpectedTokenOut(
+      {
+        denom: "ubar",
+        amount: new Int("10000"),
+      },
+      "uqux",
+      true
+    );
+    // Routes with duplicate pools have to be removed, leaving only two.
+    expect(routes.length).toBe(2);
+  });
+
   test("test weighted pool's derivative of after spot price", () => {
     const pool1 = new WeightedPool(
       createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
