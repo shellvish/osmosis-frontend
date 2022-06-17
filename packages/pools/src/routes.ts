@@ -174,6 +174,8 @@ export class OptimizedRoutes {
       new Map();
     const multihopCandidatesHasOnlyOutIntermediates: Map<string, Pool[]> =
       new Map();
+    const multihopCandidatesHasInAndOutIntermediates: Map<string, Pool[]> =
+      new Map();
 
     const cachedPools = OptimizedRoutes.wrapCachedPools(this.pools);
     for (const pool of cachedPools) {
@@ -192,15 +194,15 @@ export class OptimizedRoutes {
             const denom = poolAsset.denom;
             if (denom !== tokenInDenom && denom !== tokenOutDenom) {
               const candiateData =
-                multihopCandidatesHasOnlyInIntermediates.get(denom);
+                multihopCandidatesHasInAndOutIntermediates.get(denom);
               if (candiateData) {
                 candiateData.push(pool);
-                multihopCandidatesHasOnlyInIntermediates.set(
+                multihopCandidatesHasInAndOutIntermediates.set(
                   denom,
                   candiateData
                 );
               } else {
-                multihopCandidatesHasOnlyInIntermediates.set(denom, [pool]);
+                multihopCandidatesHasInAndOutIntermediates.set(denom, [pool]);
               }
             }
           }
@@ -242,6 +244,23 @@ export class OptimizedRoutes {
     }
 
     multihopCandidatesHasOnlyInIntermediates.forEach((inPools, denom) => {
+      const outPools = (
+        multihopCandidatesHasOnlyOutIntermediates.get(denom) ?? []
+      ).concat(multihopCandidatesHasInAndOutIntermediates.get(denom) ?? []);
+      if (outPools.length > 0) {
+        for (const inPool of inPools) {
+          for (const outPool of outPools) {
+            filteredRouteRoutes.push({
+              pools: [inPool, outPool],
+              tokenInDenom: tokenInDenom,
+              tokenOutDenoms: [denom, tokenOutDenom],
+            });
+          }
+        }
+      }
+    });
+
+    multihopCandidatesHasInAndOutIntermediates.forEach((inPools, denom) => {
       const outPools = multihopCandidatesHasOnlyOutIntermediates.get(denom);
       if (outPools && outPools.length > 0) {
         for (const inPool of inPools) {
