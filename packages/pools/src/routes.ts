@@ -171,9 +171,9 @@ export class OptimizedRoutes {
     const filteredRouteRoutes: Route[] = [];
 
     // Key is denom.
-    const multihopCandiateHasOnlyInIntermediates: Map<string, Pool[]> =
+    const multihopCandidatesHasOnlyInIntermediates: Map<string, Pool[]> =
       new Map();
-    const multihopCandiateHasOnlyOutIntermediates: Map<string, Pool[]> =
+    const multihopCandidatesHasOnlyOutIntermediates: Map<string, Pool[]> =
       new Map();
 
     const cachedPools = OptimizedRoutes.wrapCachedPools(this.pools);
@@ -193,12 +193,15 @@ export class OptimizedRoutes {
             const denom = poolAsset.denom;
             if (denom !== tokenInDenom && denom !== tokenOutDenom) {
               const candiateData =
-                multihopCandiateHasOnlyInIntermediates.get(denom);
+                multihopCandidatesHasOnlyInIntermediates.get(denom);
               if (candiateData) {
                 candiateData.push(pool);
-                multihopCandiateHasOnlyInIntermediates.set(denom, candiateData);
+                multihopCandidatesHasOnlyInIntermediates.set(
+                  denom,
+                  candiateData
+                );
               } else {
-                multihopCandiateHasOnlyInIntermediates.set(denom, [pool]);
+                multihopCandidatesHasOnlyInIntermediates.set(denom, [pool]);
               }
             }
           }
@@ -210,27 +213,27 @@ export class OptimizedRoutes {
             if (denom !== tokenInDenom && denom !== tokenOutDenom) {
               if (hasTokenIn) {
                 const candiateData =
-                  multihopCandiateHasOnlyInIntermediates.get(denom);
+                  multihopCandidatesHasOnlyInIntermediates.get(denom);
                 if (candiateData) {
                   candiateData.push(pool);
-                  multihopCandiateHasOnlyInIntermediates.set(
+                  multihopCandidatesHasOnlyInIntermediates.set(
                     denom,
                     candiateData
                   );
                 } else {
-                  multihopCandiateHasOnlyInIntermediates.set(denom, [pool]);
+                  multihopCandidatesHasOnlyInIntermediates.set(denom, [pool]);
                 }
               } else {
                 const candiateData =
-                  multihopCandiateHasOnlyOutIntermediates.get(denom);
+                  multihopCandidatesHasOnlyOutIntermediates.get(denom);
                 if (candiateData) {
                   candiateData.push(pool);
-                  multihopCandiateHasOnlyOutIntermediates.set(
+                  multihopCandidatesHasOnlyOutIntermediates.set(
                     denom,
                     candiateData
                   );
                 } else {
-                  multihopCandiateHasOnlyOutIntermediates.set(denom, [pool]);
+                  multihopCandidatesHasOnlyOutIntermediates.set(denom, [pool]);
                 }
               }
             }
@@ -239,8 +242,8 @@ export class OptimizedRoutes {
       }
     }
 
-    multihopCandiateHasOnlyInIntermediates.forEach((inPools, denom) => {
-      const outPools = multihopCandiateHasOnlyOutIntermediates.get(denom);
+    multihopCandidatesHasOnlyInIntermediates.forEach((inPools, denom) => {
+      const outPools = multihopCandidatesHasOnlyOutIntermediates.get(denom);
       if (outPools && outPools.length > 0) {
         for (const inPool of inPools) {
           for (const outPool of outPools) {
