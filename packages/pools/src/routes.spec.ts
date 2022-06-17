@@ -1276,18 +1276,15 @@ describe("Test swap router", () => {
 
     const tokenIn = {
       denom: "uosmo",
-      amount: new Int("25000000000"),
+      amount: new Int("20000000000"),
     };
 
     const afterSP1 = router.pools[0]
       .getTokenOutByTokenIn(tokenIn, "uion")
       .afterPool.getSpotPriceInOverOut("uosmo", "uion");
-    const afterSP2 = router.pools[1]
-      .getTokenOutByTokenIn(tokenIn, "uion")
-      .afterPool.getSpotPriceInOverOut("uosmo", "uion");
 
-    // For testing, after spot price should be
-    expect(afterSP1.gt(afterSP2)).toBe(true);
+    // For testing, spot price of advantageous pool should become disadvantageous after swap.
+    expect(sp2.lt(afterSP1)).toBe(true);
 
     const routes = router.getOptimizedRoutesByTokenIn(tokenIn, "uion", 3, 30);
 
@@ -1388,12 +1385,9 @@ describe("Test swap router", () => {
 
     const tokenIn = {
       denom: "uosmo",
-      amount: new Int("25000000000"),
+      amount: new Int("20000000000"),
     };
 
-    const afterSP1 = router.pools[0]
-      .getTokenOutByTokenIn(tokenIn, "uion")
-      .afterPool.getSpotPriceInOverOut("uosmo", "uion");
     const tokenOutPool3 = router.pools[2].getTokenOutByTokenIn(tokenIn, "ufoo");
     const afterSP2 = tokenOutPool3.afterPool
       .getSpotPriceInOverOut("uosmo", "ufoo")
@@ -1409,8 +1403,8 @@ describe("Test swap router", () => {
           .afterPool.getSpotPriceInOverOut("ufoo", "uion")
       );
 
-    // For testing, after spot price should be
-    expect(afterSP1.lt(afterSP2)).toBe(true);
+    // For testing, spot price of advantageous pool should become disadvantageous after swap.
+    expect(afterSP2.gt(sp1)).toBe(true);
 
     const routes = router.getOptimizedRoutesByTokenIn(tokenIn, "uion", 3, 30);
 
