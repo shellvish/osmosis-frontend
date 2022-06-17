@@ -295,16 +295,6 @@ describe("Test swap router", () => {
     ).toBe(true);
 
     candidateRoutes = router.getCandidateRoutes("ubar", "uqux", true);
-    console.log(
-      candidateRoutes.map((route) => {
-        const { pools, ...r } = route;
-
-        return {
-          ...r,
-          poolIds: pools.map((p) => p.id),
-        };
-      })
-    );
     expect(candidateRoutes.length).toBe(4);
     expect(
       checkRoutesIncludesRoute(candidateRoutes, {
