@@ -3,6 +3,10 @@ import { Pool } from "./interface";
 import { NoPoolsError, NotEnoughLiquidityError } from "./errors";
 import { Route, RouteWithAmount } from "./types";
 import { CachedPool } from "./cache";
+import {
+  assertRoutesHaveNoDuplicatedPool,
+  assertRoutesHaveSameTokenInAndTokenOut,
+} from "./assert";
 
 export class OptimizedRoutes {
   protected _pools: ReadonlyArray<Pool>;
@@ -446,14 +450,14 @@ export class OptimizedRoutes {
       return [];
     }
 
-    OptimizedRoutes.assertRoutesHaveNoDuplicatedPool(routes);
+    assertRoutesHaveNoDuplicatedPool(routes);
 
     if (routes.length === 1) {
       // No need to calculate if route is just one.
       return routes.slice();
     }
 
-    OptimizedRoutes.assertRoutesHaveSameTokenInAndTokenOut(routes);
+    assertRoutesHaveSameTokenInAndTokenOut(routes);
 
     let totalTokenInAmount = new Int(0);
     for (const route of routes) {
@@ -553,73 +557,6 @@ export class OptimizedRoutes {
     return routes;
   }
 
-  /**
-   * Checks that routes have the same token in denom, and the expected token out denom is the same.
-   * @param routes
-   * @protected
-   */
-  protected static assertRoutesHaveSameTokenInAndTokenOut(routes: Route[]) {
-    if (routes.length === 0) {
-      throw new Error("Routes is empty");
-    }
-
-    let tokenInDenom: string = "";
-    let tokenOutDenom: string = "";
-
-    for (let i = 0; i < routes.length; i++) {
-      const route = routes[i];
-
-      if (!route.tokenInDenom) {
-        throw new Error("Empty token in denom");
-      }
-
-      if (route.tokenOutDenoms.length === 0) {
-        throw new Error("Empty token out denoms");
-      }
-
-      if (!route.tokenOutDenoms[route.tokenOutDenoms.length - 1]) {
-        throw new Error("Empty last token out");
-      }
-
-      if (i === 0) {
-        tokenInDenom = route.tokenInDenom;
-        tokenOutDenom = route.tokenOutDenoms[route.tokenOutDenoms.length - 1];
-      } else {
-        if (route.tokenInDenom !== tokenInDenom) {
-          throw new Error("Routes have different token in");
-        }
-        if (
-          route.tokenOutDenoms[route.tokenOutDenoms.length - 1] !==
-          tokenOutDenom
-        ) {
-          throw new Error("Routes have different token out");
-        }
-      }
-    }
-  }
-
-  /**
-   * Checks that the pools in routes not to have duplicated pools.
-   * It requires more complex logic to handle the duplicated pools when calculating mixed, multihop swaps,
-   * because each swap affects the result of other swap.
-   * Thus, until now, this library doesn't consider the case of duplicated pools, and it may not work.
-   * @param routes
-   * @protected
-   */
-  protected static assertRoutesHaveNoDuplicatedPool(routes: Route[]) {
-    const usedPoolIds: Map<string, boolean> = new Map();
-
-    for (const route of routes) {
-      for (const pool of route.pools) {
-        if (usedPoolIds.has(pool.id)) {
-          throw new Error(`Routes have duplicated pool: ${pool.id}`);
-        }
-
-        usedPoolIds.set(pool.id, true);
-      }
-    }
-  }
-
   protected static calculateDerivativeSpotPriceInOverOutAfterSwapByTokenIn(
     route: RouteWithAmount
   ): Dec {
@@ -639,7 +576,7 @@ export class OptimizedRoutes {
       );
     }
 
-    OptimizedRoutes.assertRoutesHaveNoDuplicatedPool([route]);
+    assertRoutesHaveNoDuplicatedPool([route]);
 
     // Formula of SpotPriceAfterSwap(TokenIn) is below
     // SPaS(x) = SPaS1(x) * SPaS2(TokenOut1(x)) * SPaS3(TokenOut2(TokenOut1(x))) ...
@@ -721,8 +658,8 @@ export class OptimizedRoutes {
       throw new Error("Paths are empty");
     }
 
-    OptimizedRoutes.assertRoutesHaveNoDuplicatedPool(routes);
-    OptimizedRoutes.assertRoutesHaveSameTokenInAndTokenOut(routes);
+    assertRoutesHaveNoDuplicatedPool(routes);
+    assertRoutesHaveSameTokenInAndTokenOut(routes);
 
     let totalOutAmount: Int = new Int(0);
     let totalBeforeSpotPriceInOverOut: Dec = new Dec(0);
