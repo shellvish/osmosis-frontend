@@ -9,11 +9,13 @@ export class OptimizedRoutes {
   protected candidateRoutesCache = new Map<string, Route[]>();
 
   constructor(pools: ReadonlyArray<Pool>) {
-    this._pools = pools;
+    // shallow copy
+    this._pools = pools.slice();
   }
 
   setPools(pools: ReadonlyArray<Pool>) {
-    this._pools = pools;
+    // shallow copy
+    this._pools = pools.slice();
     this.clearCache();
   }
 
@@ -164,6 +166,8 @@ export class OptimizedRoutes {
       return cached;
     }
 
+    // TODO: It seems that there is better algorithm to find candidates.
+
     const filteredRouteRoutes: Route[] = [];
 
     // Key is denom.
@@ -183,6 +187,22 @@ export class OptimizedRoutes {
           tokenOutDenoms: [tokenOutDenom],
           tokenInDenom,
         });
+
+        if (permitIntermediate) {
+          for (const poolAsset of pool.poolAssets) {
+            const denom = poolAsset.denom;
+            if (denom !== tokenInDenom && denom !== tokenOutDenom) {
+              const candiateData =
+                multihopCandiateHasOnlyInIntermediates.get(denom);
+              if (candiateData) {
+                candiateData.push(pool);
+                multihopCandiateHasOnlyInIntermediates.set(denom, candiateData);
+              } else {
+                multihopCandiateHasOnlyInIntermediates.set(denom, [pool]);
+              }
+            }
+          }
+        }
       } else {
         if (permitIntermediate && (hasTokenIn || hasTokenOut)) {
           for (const poolAsset of pool.poolAssets) {

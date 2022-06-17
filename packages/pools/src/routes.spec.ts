@@ -1,7 +1,8 @@
 import { WeightedPool, WeightedPoolRaw } from "./weighted";
 import { Dec, Int } from "@keplr-wallet/unit";
 import { OptimizedRoutes } from "./routes";
-import { RouteWithAmount } from "./types";
+import { Route, RouteWithAmount } from "./types";
+import { Pool } from "./interface";
 
 const createMockWeightedPoolRaw = (
   id: string,
@@ -56,6 +57,285 @@ class TestingOptimizedRoutes extends OptimizedRoutes {
 }
 
 describe("Test swap router", () => {
+  test("test getCandidateRoutes", () => {
+    const checkRoutesIncludesRoute = (
+      routes: Route[],
+      route: Omit<Route, "pools"> & {
+        poolIds: string[];
+      }
+    ): boolean => {
+      const routeWithPoolIds = (route: Route) => {
+        const { pools, ...remaining } = route;
+
+        return {
+          ...remaining,
+          poolIds: pools.map((pool) => pool.id),
+        };
+      };
+
+      // JSON sorted by keys, but can't be sorted properly if nested object.
+      const stringified = JSON.stringify(route, Object.keys(route).sort());
+
+      const r = routes.find((r) => {
+        return (
+          // JSON sorted by keys, but can't be sorted properly if nested object.
+          JSON.stringify(routeWithPoolIds(r), Object.keys(route).sort()) ===
+          stringified
+        );
+      });
+
+      return r != null;
+    };
+
+    const pools: Pool[] = [];
+
+    // QUESTION: Need to permit empty pools (empty array)?
+    const router = new OptimizedRoutes(pools);
+    let candidateRoutes = router.getCandidateRoutes("ufoo", "ubar", false);
+    expect(candidateRoutes.length).toBe(0);
+
+    pools.push(
+      new WeightedPool(
+        createMockWeightedPoolRaw("1", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ufoo",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubar",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100),
+          },
+        ])
+      )
+    );
+
+    // Changes of the array passed as a parameter in the constructor or setPools should not change the router's results.
+    // You should at least have a shallow copy of the array.
+    candidateRoutes = router.getCandidateRoutes("ufoo", "ubar", false);
+    expect(candidateRoutes.length).toBe(0);
+
+    // Simply, test getCandidateRoutes to work properly when only 1 pool provided.
+    router.setPools(pools);
+    candidateRoutes = router.getCandidateRoutes("ufoo", "ubar", false);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ufoo",
+        tokenOutDenoms: ["ubar"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubar", "ubaz", true);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubaz", "ufoo", true);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ubaz",
+        tokenOutDenoms: ["ufoo"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubaz", "uqux", true);
+    expect(candidateRoutes.length).toBe(0);
+
+    pools.push(
+      new WeightedPool(
+        createMockWeightedPoolRaw("2", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "uqux",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "ufred",
+            amount: new Int(100),
+          },
+        ])
+      ),
+      new WeightedPool(
+        createMockWeightedPoolRaw("3", new Dec(0.05), new Dec(0.01), [
+          {
+            weight: new Int(100),
+            denom: "ubar",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "ubaz",
+            amount: new Int(100),
+          },
+          {
+            weight: new Int(100),
+            denom: "uqux",
+            amount: new Int(100),
+          },
+        ])
+      )
+    );
+
+    // Changes of the array passed as a parameter in the constructor or setPools should not change the router's results.
+    // You should at least have a shallow copy of the array.
+    candidateRoutes = router.getCandidateRoutes("ubaz", "uqux", false);
+    expect(candidateRoutes.length).toBe(0);
+
+    router.setPools(pools);
+
+    // Test getCandidateRoutes to be able to find multihop routes.
+
+    candidateRoutes = router.getCandidateRoutes("ufoo", "ubar", false);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ufoo",
+        tokenOutDenoms: ["ubar"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ufoo", "ubar", true);
+    expect(candidateRoutes.length).toBe(2);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ufoo",
+        tokenOutDenoms: ["ubar"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1", "3"],
+        tokenInDenom: "ufoo",
+        tokenOutDenoms: ["ubaz", "ubar"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubar", "ubaz", false);
+    expect(candidateRoutes.length).toBe(2);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubar", "ubaz", true);
+    expect(candidateRoutes.length).toBe(3);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3", "2"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["uqux", "ubaz"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ufoo", "ufred", true);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1", "2"],
+        tokenInDenom: "ufoo",
+        tokenOutDenoms: ["ubaz", "ufred"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubar", "uqux", false);
+    expect(candidateRoutes.length).toBe(1);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["uqux"],
+      })
+    ).toBe(true);
+
+    candidateRoutes = router.getCandidateRoutes("ubar", "uqux", true);
+    console.log(
+      candidateRoutes.map((route) => {
+        const { pools, ...r } = route;
+
+        return {
+          ...r,
+          poolIds: pools.map((p) => p.id),
+        };
+      })
+    );
+    expect(candidateRoutes.length).toBe(4);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1", "2"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz", "uqux"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["1", "3"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz", "uqux"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3", "2"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["ubaz", "uqux"],
+      })
+    ).toBe(true);
+    expect(
+      checkRoutesIncludesRoute(candidateRoutes, {
+        poolIds: ["3"],
+        tokenInDenom: "ubar",
+        tokenOutDenoms: ["uqux"],
+      })
+    ).toBe(true);
+  });
+
   test("test weighted pool's derivative of after spot price", () => {
     const pool1 = new WeightedPool(
       createMockWeightedPoolRaw("1", new Dec(0), new Dec(0), [
