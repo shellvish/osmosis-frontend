@@ -114,79 +114,77 @@ export class ObservablePoolsWithMetric {
     makeObservable(this);
   }
 
-  getAllPools = computedFn(
-    (
-      sortingColumn?: keyof ObservablePoolWithMetric,
-      isSortingDesc?: boolean
-    ) => {
-      const allPools = this.queriesStore
-        .get(this.chainId)
-        .osmosis?.queryGammPools.getAllPools();
+  getAllPools = (
+    sortingColumn: keyof ObservablePoolWithMetric | null = null,
+    isSortingDesc: boolean | null = null
+  ) => {
+    const allPools = this.queriesStore
+      .get(this.chainId)
+      .osmosis?.queryGammPools.getAllPools();
 
-      for (const pool of allPools ?? []) {
-        const existingPool = this._pools.get(pool.id);
+    for (const pool of allPools ?? []) {
+      const existingPool = this._pools.get(pool.id);
 
-        if (existingPool) {
-          existingPool.setPool(pool);
-        } else {
-          runInAction(() => {
-            this._pools.set(
-              pool.id,
-              new ObservablePoolWithMetric(
-                pool,
-                this.poolDetails,
-                this.poolsBonding,
-                this.chainStore,
-                this.externalQueries,
-                this.priceStore
-              )
-            );
-          });
-        }
-      }
-
-      const pools = Array.from(this._pools.values());
-      if (sortingColumn && isSortingDesc !== undefined) {
-        const sortedPools = [...pools];
-        return sortedPools.sort((a, b) => {
-          let valueToCompareA: typeof a[keyof typeof a] | number =
-            a[sortingColumn];
-          let valueToCompareB: typeof b[keyof typeof b] | number =
-            b[sortingColumn];
-
-          // If is sorting by pool, then sort by pool id
-          if (sortingColumn === "pool") {
-            valueToCompareA = Number(a.pool.id);
-            valueToCompareB = Number(b.pool.id);
-          }
-
-          if (
-            valueToCompareA instanceof PricePretty ||
-            valueToCompareA instanceof RatePretty
-          ) {
-            valueToCompareA = Number(valueToCompareA.toDec().toString());
-          }
-
-          if (
-            valueToCompareB instanceof PricePretty ||
-            valueToCompareB instanceof RatePretty
-          ) {
-            valueToCompareB = Number(valueToCompareB.toDec().toString());
-          }
-
-          if (valueToCompareA > valueToCompareB) {
-            return isSortingDesc ? -1 : 1;
-          } else if (valueToCompareA < valueToCompareB) {
-            return isSortingDesc ? 1 : -1;
-          } else {
-            return 0;
-          }
+      if (existingPool) {
+        existingPool.setPool(pool);
+      } else {
+        runInAction(() => {
+          this._pools.set(
+            pool.id,
+            new ObservablePoolWithMetric(
+              pool,
+              this.poolDetails,
+              this.poolsBonding,
+              this.chainStore,
+              this.externalQueries,
+              this.priceStore
+            )
+          );
         });
       }
-
-      return pools;
     }
-  );
+
+    const pools = Array.from(this._pools.values());
+    if (sortingColumn && isSortingDesc !== null) {
+      const sortedPools = [...pools];
+      return sortedPools.sort((a, b) => {
+        let valueToCompareA: typeof a[keyof typeof a] | number =
+          a[sortingColumn];
+        let valueToCompareB: typeof b[keyof typeof b] | number =
+          b[sortingColumn];
+
+        // If is sorting by pool, then sort by pool id
+        if (sortingColumn === "pool") {
+          valueToCompareA = Number(a.pool.id);
+          valueToCompareB = Number(b.pool.id);
+        }
+
+        if (
+          valueToCompareA instanceof PricePretty ||
+          valueToCompareA instanceof RatePretty
+        ) {
+          valueToCompareA = Number(valueToCompareA.toDec().toString());
+        }
+
+        if (
+          valueToCompareB instanceof PricePretty ||
+          valueToCompareB instanceof RatePretty
+        ) {
+          valueToCompareB = Number(valueToCompareB.toDec().toString());
+        }
+
+        if (valueToCompareA > valueToCompareB) {
+          return isSortingDesc ? -1 : 1;
+        } else if (valueToCompareA < valueToCompareB) {
+          return isSortingDesc ? 1 : -1;
+        } else {
+          return 0;
+        }
+      });
+    }
+
+    return pools;
+  };
 }
 
 export class ObservablePoolsWithMetrics extends HasMapStore<ObservablePoolsWithMetric> {
