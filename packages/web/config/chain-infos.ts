@@ -2931,6 +2931,34 @@ const chainInfos = (
       features: ["ibc-transfer", "ibc-go"],
       explorerUrlToTx: "https://explorer.kynraze.com/arkhadian/tx/{txHash}",
     },
+    {
+      rpc: "https://uptick-rpc.brocha.in",
+      rest: "https://uptick-rest.brocha.in",
+      chainId: "uptick_117-1",
+      chainName: "Uptick",
+      bip44: {
+        coinType: 60,
+      },
+      bech32Config: Bech32Address.defaultBech32Config("uptick"),
+      currencies: [
+        {
+          coinDenom: "UPTICK",
+          coinMinimalDenom: "auptick",
+          coinDecimals: 18,
+          coinImageUrl: "/tokens/uptick.svg",
+          coinGeckoId: "pool:uptick",
+          isStakeCurrency: true,
+          isFeeCurrency: true,
+          gasPriceStep: {
+            low: 0.0001,
+            average: 0.00025,
+            high: 0.0004,
+          },
+        },
+      ],
+      features: ["ibc-transfer", "ibc-go"],
+      explorerUrlToTx: "https://explorers.brocha.in/uptick/tx/{txHash}",
+    },
   ] as SimplifiedChainInfo[]
 ).map(createKeplrChainInfos);
 
