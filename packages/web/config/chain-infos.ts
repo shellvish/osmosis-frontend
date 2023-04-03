@@ -2956,7 +2956,7 @@ const chainInfos = (
           },
         },
       ],
-      features: ["ibc-transfer", "ibc-go"],
+      features: ["ibc-transfer", "ibc-go", "eth-address-gen", "eth-key-sign"],
       explorerUrlToTx: "https://explorers.brocha.in/uptick/tx/{txHash}",
     },
   ] as SimplifiedChainInfo[]
