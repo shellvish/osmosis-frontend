@@ -139,6 +139,9 @@ export class ObservableAddConcentratedLiquidityConfig extends TxChainSetter {
 
     query.waitResponse().then(() => {
       this.setHistoricalChartData(query.getChartPrices);
+      if (this.lastChartData) {
+        this.setHoverPrice(this.lastChartData?.close);
+      }
     });
   }
 
@@ -377,7 +380,8 @@ export class ObservableAddConcentratedLiquidityConfig extends TxChainSetter {
     const zoom = this.zoom;
     const min = Number(this.range[0].toString());
     const max = Number(this.range[1].toString());
-    const padding = 0.2;
+    const padding = 0.1;
+
     const prices = data.map((d) => d.price);
 
     const chartMin = Math.max(0, Math.min(...prices));
@@ -391,8 +395,8 @@ export class ObservableAddConcentratedLiquidityConfig extends TxChainSetter {
     const minWithPadding = Math.max(0, absMin - delta * padding);
     const maxWithPadding = absMax + delta * padding;
 
-    const zoomAdjustedMin = zoom > 1 ? chartMin / zoom : chartMin * zoom;
-    const zoomAdjustedMax = chartMax * zoom;
+    const zoomAdjustedMin = zoom > 1 ? absMin / zoom : absMin * zoom;
+    const zoomAdjustedMax = absMax * zoom;
 
     let finalMin = minWithPadding;
     let finalMax = maxWithPadding;
